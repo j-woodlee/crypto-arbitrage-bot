@@ -32,8 +32,6 @@ class ArbitrageEngine {
 // someone is willing to sell y BTC @$1001 price on proton dex
 // buy x BTC @$1000 on coinbase, once filled, sell x BTC @1001 on proton dex
 
-// if lowestProtonDexAskPrice
-
 module.exports = ArbitrageEngine;
 
 // example order book coinbase
