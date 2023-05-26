@@ -24,9 +24,10 @@ const updateEntry = function (tree, entry) {
 };
 
 class OrderBook {
-  constructor() {
+  constructor(exchangeName) {
     this.bids = new RBTree(largestFirst);
     this.asks = new RBTree(smallestFirst);
+    this.exchangeName = exchangeName;
   }
 
   init(bids, asks) {

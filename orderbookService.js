@@ -18,12 +18,17 @@ class OrderBookService {
     await Promise.each(this.exchangeProducts, async (exchangeProduct) => {
       const sub = this.constructOrderBookSubscriber(exchangeProduct);
       if (!sub) {
-        return new Promise((r) => setTimeout(r, 1000));
+        return;
+        // return new Promise((r) => setTimeout(r, 1000));
       }
       this.subscribers[exchangeProduct.exchangeName] = sub;
       await sub.start();
-      return new Promise((r) => setTimeout(r, 1000));
+      // return new Promise((r) => setTimeout(r, 1000));
     });
+  }
+
+  getSubscribers() {
+    return this.subscribers;
   }
 
   constructOrderBookSubscriber(exchangeProduct) {
@@ -60,20 +65,22 @@ class OrderBookService {
       unresponsiveCount: 0,
       totalCount: Object.keys(this.subscribers).length,
     };
-    Object.keys(this.subscribers).forEach(async (key) => {
-      const sub = this.subscribers[key];
-      if (sub.orderBook.isLive()) {
-        liveCheck.liveCount += 1;
-      } else {
-        const { updatedAt } = this.subscribers[key].orderBook;
-        if (updatedAt && moment(updatedAt).isBefore(moment().subtract('10', 'minutes'))) {
-          liveCheck.deadSocketConnections.push(key);
+    Object.keys(this.subscribers).forEach(async (exchangeName) => {
+      const sub = this.subscribers[exchangeName];
+      Object.keys(sub.orderBooks).forEach((localSymbol) => {
+        if (sub.orderBooks[localSymbol].isLive()) {
+          liveCheck.liveCount += 1;
+        } else {
+          const { updatedAt } = sub.orderBooks[localSymbol];
+          if (updatedAt && moment(updatedAt).isBefore(moment().subtract('10', 'minutes'))) {
+            liveCheck.deadSocketConnections.push(`${exchangeName}-${localSymbol}`);
+          }
+          let lastUpdated = sub.orderBooks[localSymbol].updatedAt;
+          lastUpdated = lastUpdated ? lastUpdated.toDate() : null;
+          liveCheck.unresponsiveCount += 1;
+          liveCheck.unresponsive.push({ name: `${exchangeName}-${localSymbol}`, lastUpdated });
         }
-        let lastUpdated = this.subscribers[key].orderBook.updatedAt;
-        lastUpdated = lastUpdated ? lastUpdated.toDate() : null;
-        liveCheck.unresponsiveCount += 1;
-        liveCheck.unresponsive.push({ key, lastUpdated });
-      }
+      });
     });
     return liveCheck;
   }
@@ -83,15 +90,6 @@ class OrderBookService {
       const sub = this.subscribers[key];
       sub.restart();
     });
-  }
-
-  // eslint-disable-next-line class-methods-use-this
-  getRef(exchange, symbol) {
-    return `${exchange}-${symbol}`;
-  }
-
-  getRefFromExchangeProduct(exchangeProduct) {
-    return this.getRef(exchangeProduct.exchangeName, exchangeProduct.product.symbol);
   }
 }
 

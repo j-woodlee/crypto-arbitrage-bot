@@ -1,6 +1,7 @@
 const axios = require('axios');
 const Promise = require('bluebird');
 const { OrderBook } = require('../utils');
+const BTCXMD_DUMMY_DATA = require('../fixtures/BTC_XMD_dummy.json');
 
 const protonDexEndpoint = 'metallicus-dbapi-dev01.binfra.one'; // testnet
 
