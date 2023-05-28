@@ -19,11 +19,9 @@ class OrderBookService {
       const sub = this.constructOrderBookSubscriber(exchangeProduct);
       if (!sub) {
         return;
-        // return new Promise((r) => setTimeout(r, 1000));
       }
       this.subscribers[exchangeProduct.exchangeName] = sub;
       await sub.start();
-      // return new Promise((r) => setTimeout(r, 1000));
     });
   }
 

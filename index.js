@@ -53,8 +53,22 @@ const initCoinbase = async () => {
       },
     },
     {
+      exchangeName: 'Coinbase',
+      localSymbol: 'ETH-USD',
+      product: {
+        counterProductPrecision: 6,
+      },
+    },
+    {
       exchangeName: 'ProtonDex',
       localSymbol: 'XBTC_XMD',
+      product: {
+        counterProductPrecision: 6,
+      },
+    },
+    {
+      exchangeName: 'ProtonDex',
+      localSymbol: 'XETH_XMD',
       product: {
         counterProductPrecision: 6,
       },
@@ -84,20 +98,32 @@ const initCoinbase = async () => {
         live = false;
       }
     }
-    const opportunity = ArbitrageEngine.findOpportunity(
-      subscribers.Coinbase.orderBooks['BTC-USD'],
-      subscribers.ProtonDex.orderBooks.XBTC_XMD,
+    // const opportunityBtc = arbEngine.findOpportunity(
+    //   subscribers.Coinbase.orderBooks['BTC-USD'],
+    //   subscribers.ProtonDex.orderBooks.XBTC_XMD,
+    // );
+    const opportunityEth = arbEngine.findOpportunity(
+      subscribers.Coinbase.orderBooks['ETH-USD'],
+      subscribers.ProtonDex.orderBooks.XETH_XMD,
     );
-    console.log('opportunity: ');
-    console.log(opportunity);
-    if (opportunity) {
-    // eslint-disable-next-line no-await-in-loop
-      await arbEngine.executeOpportunity(opportunity);
+    if (opportunityEth) {
+      console.log('would have executed');
+      console.log(opportunityEth);
+      // eslint-disable-next-line no-await-in-loop
+      // await arbEngine.executeOpportunity(opportunity);
     }
+
+    // if (opportunityBtc) {
+    //   console.log('would have executed');
+    //   console.log(opportunityBtc);
+    //   // eslint-disable-next-line no-await-in-loop
+    //   // await arbEngine.executeOpportunity(opportunity);
+    // }
 
     console.log('waiting 20 seconds...');
     // eslint-disable-next-line no-await-in-loop
-    await new Promise((r) => { setTimeout(r, 20000); });
+    await new Promise((r) => { setTimeout(r, 2000); });
+    console.log();
     console.log();
   }
 })();

@@ -26,6 +26,7 @@ class CoinbaseSubscriber {
   }
 
   restart() {
+    this.ws.close();
     this.logger.info('Coinbase: RESTART in 5 seconds...');
     setTimeout(this.start, 5000);
   }
@@ -45,26 +46,13 @@ class CoinbaseSubscriber {
 
   async start() {
     const uri = 'wss://advanced-trade-ws.coinbase.com';
-    // const date1 = new Date(new Date().toUTCString());
-    // let sentUnsub = false;
     this.ws = new WebSocket(uri);
     this.ws.on('message', (data) => {
-      // const date2 = new Date(new Date().toUTCString());
-      // const diffTime = Math.abs(date2 - date1);
-      // if (diffTime > 5000 && !sentUnsub) { // unsubs all in 5 seconds
-      //   // unsub from all products
-      //   this.unsubscribeToProducts(this.exchangeProductSymbols, CHANNEL_NAMES.level2);
-      //   sentUnsub = true;
-      // }
-
       const parsedData = JSON.parse(data);
 
       if (parsedData.channel === 'l2_data') {
         const { events } = parsedData;
         events.forEach((event) => {
-          // event.product_id is the localSymbol
-          // console.log('event.product_id: ');
-          // console.log(event.product_id);
           const bids = [];
           const asks = [];
           if (event.type === 'snapshot') {
@@ -137,8 +125,19 @@ class CoinbaseSubscriber {
   }
 
   // eslint-disable-next-line class-methods-use-this
-  addProducts(exchangeProductSymbols) {
-    this.subscribeToProducts(exchangeProductSymbols, CHANNEL_NAMES.level2);
+  addProducts(exchangeProducts) {
+    console.log('adding products');
+    const newSymbols = [];
+    exchangeProducts.forEach((ep) => {
+      this.orderBooks[ep.localSymbol] = new OrderBook('Coinbase', ep.localSymbol);
+      this.exchangeProductSymbols.push(ep.localSymbol);
+      newSymbols.push(ep.localSymbol);
+    });
+    this.exchangeProducts = this.exchangeProducts.concat(exchangeProducts);
+    this.logger.info(`Added ${JSON.stringify(exchangeProducts)}`);
+    if (this.ws.readyState === WebSocket.OPEN) {
+      this.subscribeToProducts(newSymbols, CHANNEL_NAMES.level2);
+    }
   }
 }
 

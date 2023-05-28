@@ -17,22 +17,28 @@ class ArbitrageEngine {
     this.logger = logger;
   }
 
-  static findOpportunity(orderbook1, orderbook2) {
+  findOpportunity(orderbook1, orderbook2) {
     const lowestAsk1 = orderbook1.asks.min();
     const highestBid1 = orderbook1.bids.min();
     const lowestAsk2 = orderbook2.asks.min();
     const highestBid2 = orderbook2.bids.min();
 
     console.log(`${lowestAsk1.price} < ${highestBid2.price}`);
-    if (lowestAsk1.price < highestBid2.price) { // 1 is coinbase, 2 is proton dex
+    if (lowestAsk1.price < highestBid2.price) {
+      // TO DO: check more price levels to see if they satisfy this condition,
+      // if they do then we can use those quantities in our trades
       const opportunity = {};
       opportunity.lowestAsk1 = lowestAsk1;
       opportunity.highestBid2 = highestBid2;
       // take the lowest of the two quantities
-      const amountToBuy = Math.min(lowestAsk1.qty, highestBid2.qty);
-      const amountToSell = amountToBuy;
+      let amountToBuy = Math.min(lowestAsk1.qty, highestBid2.qty);
       const buyPrice = lowestAsk1.price;
       const sellPrice = highestBid2.price;
+      const amountCounterCurrencyBuy = buyPrice * amountToBuy;
+      if (amountCounterCurrencyBuy > 50) { // limited by exchange balances
+        this.logger.info('limiting the opportunity to the exchange balance');
+        amountToBuy = 50 / buyPrice; // base = counter / (counter / base)
+      }
       opportunity.trades = [{
         side: 'buy',
         amount: amountToBuy, // in base currency
@@ -43,25 +49,31 @@ class ArbitrageEngine {
       },
       {
         side: 'sell',
-        amount: amountToSell,
+        amount: amountToBuy,
         price: sellPrice,
-        amountCounterCurrency: sellPrice * amountToSell,
+        amountCounterCurrency: sellPrice * amountToBuy,
         exchangeName: orderbook2.exchangeName,
         symbol: orderbook2.symbol,
       }];
-      return ArbitrageEngine.opportunityProfitable(opportunity) ? opportunity : undefined;
+      console.log('opportunity: ');
+      console.log(opportunity);
+      return ArbitrageEngine.isOpportunityProfitable(opportunity) ? opportunity : undefined;
     }
 
     console.log(`${lowestAsk2.price} < ${highestBid1.price}`);
-    if (lowestAsk2.price < highestBid1.price) { // 1 is coinbase, 2 is proton dex
+    if (lowestAsk2.price < highestBid1.price) {
       const opportunity = {};
       opportunity.lowestAsk2 = lowestAsk2;
       opportunity.highestBid1 = highestBid1;
       // take the lowest of the two quantities
-      const amountToBuy = Math.min(lowestAsk2.qty, highestBid1.qty);
-      const amountToSell = amountToBuy;
+      let amountToBuy = Math.min(lowestAsk2.qty, highestBid1.qty);
       const buyPrice = lowestAsk2.price;
       const sellPrice = highestBid1.price;
+      const amountCounterCurrencyBuy = buyPrice * amountToBuy;
+      if (amountCounterCurrencyBuy > 50) {
+        this.logger.info('limiting the opportunity to the exchange balance');
+        amountToBuy = 50 / buyPrice; // base = counter / (counter / base)
+      }
       opportunity.trades = [{
         side: 'buy',
         amount: amountToBuy, // in base currency
@@ -72,13 +84,15 @@ class ArbitrageEngine {
       },
       {
         side: 'sell',
-        amount: amountToSell,
+        amount: amountToBuy,
         price: sellPrice,
-        amountCounterCurrency: sellPrice * amountToSell,
+        amountCounterCurrency: sellPrice * amountToBuy,
         exchangeName: orderbook1.exchangeName,
         symbol: orderbook1.symbol,
       }];
 
+      console.log('opportunity: ');
+      console.log(opportunity);
       return ArbitrageEngine.isOpportunityProfitable(opportunity) ? opportunity : undefined;
     }
 
@@ -165,11 +179,12 @@ class ArbitrageEngine {
 
     let tradesFinished = await this.tradesFinished(requestedTrades);
     while (!tradesFinished) {
-      this.logger.info('orders not filled yet, waiting...');
+      this.logger.info('orders not filled yet, waiting for fill');
       // eslint-disable-next-line no-await-in-loop
       tradesFinished = await this.tradesFinished(requestedTrades);
     }
     this.logger.info(`Opportunity executed, trades: ${trades}`);
+    throw new Error('congrats you executed!');
   }
 
   async tradesFinished(trades) {
