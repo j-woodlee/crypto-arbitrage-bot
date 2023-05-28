@@ -6,49 +6,22 @@ const FEE_SCHEDULE = {
     taker: 0.006,
   },
   ProtonDex: {
-    maker: 0,
-    taker: 0,
+    maker: 0.001,
+    taker: 0.001,
   },
 };
 
 class ArbitrageEngine {
-  constructor(ccxtExchanges) {
+  constructor(ccxtExchanges, logger) {
     this.ccxtExchanges = ccxtExchanges;
+    this.logger = logger;
   }
 
-  // only find opportunities that require a buy/sell on orderbook1 first
   static findOpportunity(orderbook1, orderbook2) {
     const lowestAsk1 = orderbook1.asks.min();
     const highestBid1 = orderbook1.bids.min();
     const lowestAsk2 = orderbook2.asks.min();
     const highestBid2 = orderbook2.bids.min();
-
-    // console.log('lowestAsk1: ');
-    // console.log(lowestAsk1);
-    // console.log('highestBid1: ');
-    // console.log(highestBid1);
-    // console.log('lowestAsk2: ');
-    // console.log(lowestAsk2);
-    // console.log('highestBid2: ');
-    // console.log(highestBid2);
-
-    // console.log('orderbook1.asks:');
-    // let count = 0;
-    // orderbook1.asks.each((n) => {
-    //   count += 1;
-    //   if (count < 10) {
-    //     console.log(n);
-    //   }
-    // });
-
-    // count = 0;
-    // console.log('orderbook1.bids:');
-    // orderbook1.bids.each((n) => {
-    //   count += 1;
-    //   if (count < 10) {
-    //     console.log(n);
-    //   }
-    // });
 
     console.log(`${lowestAsk1.price} < ${highestBid2.price}`);
     if (lowestAsk1.price < highestBid2.price) { // 1 is coinbase, 2 is proton dex
@@ -114,7 +87,7 @@ class ArbitrageEngine {
 
   static isOpportunityProfitable(opportunity) {
     if (opportunity.trades.length > 2) {
-      throw new Error('asdf');
+      return false; // only support 2 trades right now
     }
     let totalFeesInCounterCurrency = 0;
     opportunity.trades.forEach((trade) => {
@@ -127,7 +100,7 @@ class ArbitrageEngine {
       opportunity.trades[0].amountCounterCurrency - opportunity.trades[1].amountCounterCurrency,
     );
 
-    console.log('revenue: ');
+    console.log('revenueInCounterCurrency: ');
     console.log(revenueInCounterCurrency);
     console.log('totalFeesInCounterCurrency: ');
     console.log(totalFeesInCounterCurrency);
@@ -146,7 +119,7 @@ class ArbitrageEngine {
     const { trades } = opportunity;
     console.log('trades: ');
     console.log(trades);
-    await Promise.map(trades, async (trade) => {
+    const requestedTrades = await Promise.map(trades, async (trade) => {
       const {
         symbol, side, amount, price,
       } = trade;
@@ -164,16 +137,39 @@ class ArbitrageEngine {
       console.log(price);
       console.log();
 
-      const order = await this.ccxtExchanges[trade.exchange]
-        .createOrder(symbol, type, side, amount, price, {
-          post_only: true,
-        });
+      const exchange = this.ccxtExchanges[trade.exchangeName];
+      let order;
+      if (trade.exchangeName === 'Coinbase') {
+        order = await exchange
+          .createOrder(symbol, type, side, amount, price, {
+            post_only: true, // for coinbase
+          });
+      } else if (trade.exchangeName === 'ProtonDex') {
+        order = await exchange
+          .createOrder(symbol, type, side, amount, price, {
+            localSymbol: trade.symbol, // for dex
+            quoteCurrencyQty: trade.amountCounterCurrency, // for dex
+            fillType: 0, // for dex
+          });
+      } else {
+        throw new Error('we do not support this exchange');
+      }
+
+      console.log('order: ');
+      console.log(order);
 
       const requestedTrade = trade;
       requestedTrade.orderId = order.id;
       return requestedTrade;
     });
-    await this.tradesFinished(trades);
+
+    let tradesFinished = await this.tradesFinished(requestedTrades);
+    while (!tradesFinished) {
+      this.logger.info('orders not filled yet, waiting...');
+      // eslint-disable-next-line no-await-in-loop
+      tradesFinished = await this.tradesFinished(requestedTrades);
+    }
+    this.logger.info(`Opportunity executed, trades: ${trades}`);
   }
 
   async tradesFinished(trades) {

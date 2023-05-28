@@ -65,7 +65,7 @@ class ProtonDexSubscriber {
 
   addProducts(exchangeProducts) {
     exchangeProducts.forEach((ep) => {
-      this.orderBooks[ep.localSymbol] = new OrderBook();
+      this.orderBooks[ep.localSymbol] = new OrderBook('ProtonDex', ep.localSymbol);
       this.exchangeProductSymbols.push(ep.localSymbol);
     });
     this.exchangeProducts = this.exchangeProducts.concat(exchangeProducts);

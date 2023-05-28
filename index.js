@@ -4,20 +4,27 @@ const OrderBookService = require('./orderbookService');
 const secrets = require('./secrets.json');
 const { ArbitrageEngine } = require('./utils');
 
+const chainUrlsProd = [
+  'https://metal-proton-rpc.global.binfra.one',
+  'https://proton.cryptolions.io',
+  'https://proton.eosusa.news',
+  'https://proton.greymass.com',
+];
+// const chainUrlsTestnet = [
+//   'https://api.protontest.alohaeos.com',
+//   'https://metal-protontest-rpc.global.binfra.one',
+//   'https://testnet.protonchain.com',
+//   'https://testnet.proton.pink.gg',
+//   'https://test.proton.eosusa.news',
+// ];
+
 const initProtonDex = async (logger) => {
-  const chainUrls = [
-    'https://api.protontest.alohaeos.com',
-    'https://metal-protontest-rpc.global.binfra.one',
-    'https://testnet.protonchain.com',
-    'https://testnet.proton.pink.gg',
-    'https://test.proton.eosusa.news',
-  ];
   const protonDex = new ccxt.ProtonDexV2({
-    privateKey: secrets.protonDexTestnetPrivateKey,
-    chainUrls,
-    actor: secrets.testnetActor,
+    privateKey: secrets.protonDexMainnetPrivateKey,
+    chainUrls: chainUrlsProd,
+    actor: secrets.mainnetActor,
     logger,
-    host: secrets.protonDexTestnetEndpoint,
+    host: secrets.protonDexMainnetEndpoint,
   });
 
   await protonDex.loadMarkets();
@@ -53,8 +60,8 @@ const initCoinbase = async () => {
       },
     },
   ];
-  // const protonDex = await initProtonDex(logger);
-  // const coinbase = await initCoinbase();
+  const protonDex = await initProtonDex(logger);
+  const coinbase = await initCoinbase();
   const orderBookService = new OrderBookService(
     exchangeProducts,
     secrets,
@@ -64,22 +71,19 @@ const initCoinbase = async () => {
   await orderBookService.start();
   const subscribers = orderBookService.getSubscribers();
   const arbEngine = new ArbitrageEngine({
-    // ProtonDex: protonDex,
-    // Coinbase: coinbase,
-  });
-  // console.log('subscribers.ProtonDex.orderBooks.XBTC_XMD: ');
-  // console.log(subscribers.ProtonDex.orderBooks.XBTC_XMD);
-  let notLive = false;
-  while (!notLive) {
+    ProtonDex: protonDex,
+    Coinbase: coinbase,
+  }, logger);
+
+  let live = true;
+  while (live) {
     if (!subscribers.Coinbase.orderBooks['BTC-USD'].isLive() || !subscribers.ProtonDex.orderBooks.XBTC_XMD.isLive()) {
-      // eslint-disable-next-line no-await-in-loop
+    // eslint-disable-next-line no-await-in-loop
       await new Promise((r) => { setTimeout(r, 5000); }); // the websockets could be initializing
       if (!subscribers.Coinbase.orderBooks['BTC-USD'].isLive() || !subscribers.ProtonDex.orderBooks.XBTC_XMD.isLive()) {
-        notLive = true;
+        live = false;
       }
     }
-    // console.log('subscribers.Coinbase.orderBooks[BTC-USD]: ');
-    // console.log(subscribers.Coinbase.orderBooks['BTC-USD']);
     const opportunity = ArbitrageEngine.findOpportunity(
       subscribers.Coinbase.orderBooks['BTC-USD'],
       subscribers.ProtonDex.orderBooks.XBTC_XMD,
@@ -87,11 +91,13 @@ const initCoinbase = async () => {
     console.log('opportunity: ');
     console.log(opportunity);
     if (opportunity) {
-      // eslint-disable-next-line no-await-in-loop
+    // eslint-disable-next-line no-await-in-loop
       await arbEngine.executeOpportunity(opportunity);
     }
 
+    console.log('waiting 20 seconds...');
     // eslint-disable-next-line no-await-in-loop
-    await new Promise((r) => { setTimeout(r, 5000); });
+    await new Promise((r) => { setTimeout(r, 20000); });
+    console.log();
   }
 })();
