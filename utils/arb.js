@@ -1,5 +1,16 @@
 const Promise = require('bluebird');
 
+const FEE_SCHEDULE = {
+  Coinbase: {
+    maker: 0.004,
+    taker: 0.006,
+  },
+  ProtonDex: {
+    maker: 0,
+    taker: 0,
+  },
+};
+
 class ArbitrageEngine {
   constructor(ccxtExchanges) {
     this.ccxtExchanges = ccxtExchanges;
@@ -54,7 +65,7 @@ class ArbitrageEngine {
         amount: amountToBuy, // in base currency
         price: buyPrice,
         amountCounterCurrency: buyPrice * amountToBuy,
-        exchange: orderbook1.exchangeName,
+        exchangeName: orderbook1.exchangeName,
         symbol: orderbook1.symbol,
       },
       {
@@ -62,10 +73,10 @@ class ArbitrageEngine {
         amount: amountToSell,
         price: sellPrice,
         amountCounterCurrency: sellPrice * amountToSell,
-        exchange: orderbook2.exchangeName,
+        exchangeName: orderbook2.exchangeName,
         symbol: orderbook2.symbol,
       }];
-      return opportunity;
+      return ArbitrageEngine.opportunityProfitable(opportunity) ? opportunity : undefined;
     }
 
     console.log(`${lowestAsk2.price} < ${highestBid1.price}`);
@@ -82,29 +93,60 @@ class ArbitrageEngine {
         side: 'buy',
         amount: amountToBuy, // in base currency
         price: buyPrice,
-        // amountCounterCurrency: buyPrice * amountToBuy,
-        exchange: orderbook2.exchangeName,
+        amountCounterCurrency: buyPrice * amountToBuy,
+        exchangeName: orderbook2.exchangeName,
         symbol: orderbook2.symbol,
       },
       {
         side: 'sell',
         amount: amountToSell,
         price: sellPrice,
-        // amountCounterCurrency: sellPrice * amountToSell,
-        exchange: orderbook1.exchangeName,
+        amountCounterCurrency: sellPrice * amountToSell,
+        exchangeName: orderbook1.exchangeName,
         symbol: orderbook1.symbol,
       }];
-      return opportunity;
+
+      return ArbitrageEngine.isOpportunityProfitable(opportunity) ? opportunity : undefined;
     }
 
     return undefined;
   }
 
+  static isOpportunityProfitable(opportunity) {
+    if (opportunity.trades.length > 2) {
+      throw new Error('asdf');
+    }
+    let totalFeesInCounterCurrency = 0;
+    opportunity.trades.forEach((trade) => {
+      const feeInCounterCurrency = trade.amountCounterCurrency
+        * FEE_SCHEDULE[trade.exchangeName].maker;
+      totalFeesInCounterCurrency += feeInCounterCurrency;
+    });
+
+    const revenueInCounterCurrency = Math.abs(
+      opportunity.trades[0].amountCounterCurrency - opportunity.trades[1].amountCounterCurrency,
+    );
+
+    console.log('revenue: ');
+    console.log(revenueInCounterCurrency);
+    console.log('totalFeesInCounterCurrency: ');
+    console.log(totalFeesInCounterCurrency);
+    const profit = revenueInCounterCurrency - totalFeesInCounterCurrency;
+    console.log('profit: ');
+    console.log(profit);
+    if (profit > 0) {
+      return true;
+    }
+
+    return false;
+  }
+
   async executeOpportunity(opportunity) {
-    const trades = ArbitrageEngine.putCoinbaseTradesFirst(opportunity.trades);
+    // const trades = ArbitrageEngine.putCoinbaseTradesFirst(opportunity.trades);
+    const { trades } = opportunity;
     console.log('trades: ');
     console.log(trades);
-    await Promise.each(trades, async (trade) => {
+    await Promise.map(trades, async (trade) => {
       const {
         symbol, side, amount, price,
       } = trade;
@@ -122,26 +164,45 @@ class ArbitrageEngine {
       console.log(price);
       console.log();
 
-      // const order = await this.ccxtExchanges[trade.exchange]
-      // .createOrder(symbol, type, side, amount, price, {
-      //   post_only: true,
-      // });
-      // const fetchedOrder = await this.ccxtExchanges[trade.exchange]
-      // .fetchOrder(order.id, symbol, {});
+      const order = await this.ccxtExchanges[trade.exchange]
+        .createOrder(symbol, type, side, amount, price, {
+          post_only: true,
+        });
+
+      const requestedTrade = trade;
+      requestedTrade.orderId = order.id;
+      return requestedTrade;
     });
+    await this.tradesFinished(trades);
+  }
+
+  async tradesFinished(trades) {
+    const filledStatuses = await Promise.map(trades, async (trade) => {
+      const fetchedOrder = this.ccxtExchanges[trade.exchangeName]
+        .fetcheOrder(trade.orderId, trade.symbol, {});
+      return fetchedOrder.remaining === 0;
+    });
+
+    // eslint-disable-next-line no-restricted-syntax
+    for (const filled of filledStatuses) {
+      if (!filled) {
+        return false;
+      }
+    }
+    return true;
   }
 
   static putCoinbaseTradesFirst(trades) {
     return trades.sort((a, b) => {
-      if (a.exchange === b.exchange) {
+      if (a.exchangeName === b.exchangeName) {
         return 0;
       }
 
-      if (a.exchange === 'Coinbase' && b.exchange !== 'Coinbase') {
+      if (a.exchangeName === 'Coinbase' && b.exchangeName !== 'Coinbase') {
         return -1;
       }
 
-      if (a.exchange !== 'Coinbase' && b.exchange === 'Coinbase') {
+      if (a.exchangeName !== 'Coinbase' && b.exchangeName === 'Coinbase') {
         return 1;
       }
       throw new Error('impossible array values');
