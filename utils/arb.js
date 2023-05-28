@@ -1,4 +1,10 @@
+const Promise = require('bluebird');
+
 class ArbitrageEngine {
+  constructor(ccxtExchanges) {
+    this.ccxtExchanges = ccxtExchanges;
+  }
+
   // only find opportunities that require a buy/sell on orderbook1 first
   static findOpportunity(orderbook1, orderbook2) {
     const lowestAsk1 = orderbook1.asks.min();
@@ -6,34 +12,32 @@ class ArbitrageEngine {
     const lowestAsk2 = orderbook2.asks.min();
     const highestBid2 = orderbook2.bids.min();
 
-    console.log('lowestAsk1: ');
-    console.log(lowestAsk1);
-    console.log('highestBid1: ');
-    console.log(highestBid1);
-    console.log('lowestAsk2: ');
-    console.log(lowestAsk2);
-    console.log('highestBid2: ');
-    console.log(highestBid2);
+    // console.log('lowestAsk1: ');
+    // console.log(lowestAsk1);
+    // console.log('highestBid1: ');
+    // console.log(highestBid1);
+    // console.log('lowestAsk2: ');
+    // console.log(lowestAsk2);
+    // console.log('highestBid2: ');
+    // console.log(highestBid2);
 
-    console.log('orderbook1.asks:');
-    let count = 0;
-    orderbook1.asks.each((n) => {
-      count += 1;
-      if (count < 10) {
-        console.log(n);
-      }
-    });
+    // console.log('orderbook1.asks:');
+    // let count = 0;
+    // orderbook1.asks.each((n) => {
+    //   count += 1;
+    //   if (count < 10) {
+    //     console.log(n);
+    //   }
+    // });
 
-    count = 0;
-    console.log('orderbook1.bids:');
-    orderbook1.bids.each((n) => {
-      count += 1;
-      if (count < 10) {
-        console.log(n);
-      }
-    });
-
-    console.log('looking for opportunity');
+    // count = 0;
+    // console.log('orderbook1.bids:');
+    // orderbook1.bids.each((n) => {
+    //   count += 1;
+    //   if (count < 10) {
+    //     console.log(n);
+    //   }
+    // });
 
     console.log(`${lowestAsk1.price} < ${highestBid2.price}`);
     if (lowestAsk1.price < highestBid2.price) { // 1 is coinbase, 2 is proton dex
@@ -51,6 +55,7 @@ class ArbitrageEngine {
         price: buyPrice,
         amountCounterCurrency: buyPrice * amountToBuy,
         exchange: orderbook1.exchangeName,
+        symbol: orderbook1.symbol,
       },
       {
         side: 'sell',
@@ -58,6 +63,7 @@ class ArbitrageEngine {
         price: sellPrice,
         amountCounterCurrency: sellPrice * amountToSell,
         exchange: orderbook2.exchangeName,
+        symbol: orderbook2.symbol,
       }];
       return opportunity;
     }
@@ -76,20 +82,70 @@ class ArbitrageEngine {
         side: 'buy',
         amount: amountToBuy, // in base currency
         price: buyPrice,
-        amountCounterCurrency: buyPrice * amountToBuy,
+        // amountCounterCurrency: buyPrice * amountToBuy,
         exchange: orderbook2.exchangeName,
+        symbol: orderbook2.symbol,
       },
       {
         side: 'sell',
         amount: amountToSell,
         price: sellPrice,
-        amountCounterCurrency: sellPrice * amountToSell,
+        // amountCounterCurrency: sellPrice * amountToSell,
         exchange: orderbook1.exchangeName,
+        symbol: orderbook1.symbol,
       }];
       return opportunity;
     }
 
     return undefined;
+  }
+
+  async executeOpportunity(opportunity) {
+    const trades = ArbitrageEngine.putCoinbaseTradesFirst(opportunity.trades);
+    console.log('trades: ');
+    console.log(trades);
+    await Promise.each(trades, async (trade) => {
+      const {
+        symbol, side, amount, price,
+      } = trade;
+      const type = 'limit';
+
+      console.log('symbol: ');
+      console.log(symbol);
+      console.log('type: ');
+      console.log(type);
+      console.log('side: ');
+      console.log(side);
+      console.log('amount: ');
+      console.log(amount);
+      console.log('price: ');
+      console.log(price);
+      console.log();
+
+      // const order = await this.ccxtExchanges[trade.exchange]
+      // .createOrder(symbol, type, side, amount, price, {
+      //   post_only: true,
+      // });
+      // const fetchedOrder = await this.ccxtExchanges[trade.exchange]
+      // .fetchOrder(order.id, symbol, {});
+    });
+  }
+
+  static putCoinbaseTradesFirst(trades) {
+    return trades.sort((a, b) => {
+      if (a.exchange === b.exchange) {
+        return 0;
+      }
+
+      if (a.exchange === 'Coinbase' && b.exchange !== 'Coinbase') {
+        return -1;
+      }
+
+      if (a.exchange !== 'Coinbase' && b.exchange === 'Coinbase') {
+        return 1;
+      }
+      throw new Error('impossible array values');
+    });
   }
 }
 

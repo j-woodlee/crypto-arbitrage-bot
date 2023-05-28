@@ -12,7 +12,7 @@ class ProtonDexSubscriber {
     this.orderBooks = {};
     this.exchangeProductSymbols = [];
     exchangeProducts.forEach((ep) => {
-      this.orderBooks[ep.localSymbol] = new OrderBook('ProtonDex');
+      this.orderBooks[ep.localSymbol] = new OrderBook('ProtonDex', ep.localSymbol);
       this.exchangeProductSymbols.push(ep.localSymbol);
     });
     this.name = 'ProtonDex';

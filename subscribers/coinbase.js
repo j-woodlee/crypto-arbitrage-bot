@@ -20,7 +20,7 @@ class CoinbaseSubscriber {
     this.exchangeProductSymbols = [];
     this.orderBooks = {};
     exchangeProducts.forEach((ep) => {
-      this.orderBooks[ep.localSymbol] = new OrderBook('Coinbase');
+      this.orderBooks[ep.localSymbol] = new OrderBook('Coinbase', ep.localSymbol);
       this.exchangeProductSymbols.push(ep.localSymbol);
     });
   }
