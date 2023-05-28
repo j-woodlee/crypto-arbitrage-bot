@@ -31,6 +31,7 @@ class OrderBook {
   }
 
   init(bids, asks) {
+    // console.log('Initializing ORDER BOOK');
     this.updatedAt = moment();
     if (!this.isEmpty()) {
       this.empty();
@@ -44,7 +45,7 @@ class OrderBook {
   }
 
   update(bids, asks) {
-    console.log('UPDATING ORDER BOOK');
+    // console.log('UPDATING ORDER BOOK');
     this.updatedAt = moment();
     bids.forEach((bid) => {
       updateEntry(this.bids, bid);

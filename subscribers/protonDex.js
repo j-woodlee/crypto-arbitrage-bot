@@ -2,7 +2,8 @@ const axios = require('axios');
 const Promise = require('bluebird');
 const { OrderBook } = require('../utils');
 
-const protonDexEndpoint = 'metallicus-dbapi-dev01.binfra.one'; // testnet
+// const protonDexEndpoint = 'metallicus-dbapi-dev01.binfra.one'; // testnet
+const protonDexEndpoint = 'metal-dexdb.global.binfra.one'; // mainnet
 
 class ProtonDexSubscriber {
   constructor(exchangeProducts, logger) {
@@ -39,13 +40,14 @@ class ProtonDexSubscriber {
   }
 
   async start() {
-    this.logger.info(`${this.name}: START`);
+    this.logger.info(`${this.name}: Opened`);
     await Promise.each(this.exchangeProducts, async (ep) => {
       await this.initOrderbook(ep);
       this.intervalIds.push(setInterval(async () => {
         await this.initOrderbook(ep);
       }, 5000));
     });
+    this.logger.info('ProtonDex: Initialized Orderbook');
   }
 
   async initOrderbook(ep) {
@@ -58,7 +60,7 @@ class ProtonDexSubscriber {
     const bids = snapshot.data.bids.map((bid) => ({ price: bid.level, qty: bid.bid }));
     const asks = snapshot.data.asks.map((ask) => ({ price: ask.level, qty: ask.bid }));
     this.orderBooks[ep.localSymbol].init(bids, asks);
-    this.logger.info(`${this.name} ${ep.localSymbol}: Updated Orderbook`);
+    // this.logger.info(`${this.name} ${ep.localSymbol}: Updated Orderbook`);
   }
 
   addProducts(exchangeProducts) {

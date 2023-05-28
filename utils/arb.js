@@ -1,20 +1,41 @@
 class ArbitrageEngine {
   // only find opportunities that require a buy/sell on orderbook1 first
   static findOpportunity(orderbook1, orderbook2) {
-    console.log('orderbook2.asks:');
-    orderbook2.asks.each((n) => {
-      console.log(n);
-    });
-    console.log('orderbook2.bids:');
-    orderbook2.bids.each((n) => {
-      console.log(n);
-    });
-    // console.log('min and then max: ');
-    // console.log(orderbook2.bids.min());
-    // console.log(orderbook2.bids.max());
-
     const lowestAsk1 = orderbook1.asks.min();
-    const highestBid2 = orderbook2.bids.max();
+    const highestBid1 = orderbook1.bids.min();
+    const lowestAsk2 = orderbook2.asks.min();
+    const highestBid2 = orderbook2.bids.min();
+
+    console.log('lowestAsk1: ');
+    console.log(lowestAsk1);
+    console.log('highestBid1: ');
+    console.log(highestBid1);
+    console.log('lowestAsk2: ');
+    console.log(lowestAsk2);
+    console.log('highestBid2: ');
+    console.log(highestBid2);
+
+    console.log('orderbook1.asks:');
+    let count = 0;
+    orderbook1.asks.each((n) => {
+      count += 1;
+      if (count < 10) {
+        console.log(n);
+      }
+    });
+
+    count = 0;
+    console.log('orderbook1.bids:');
+    orderbook1.bids.each((n) => {
+      count += 1;
+      if (count < 10) {
+        console.log(n);
+      }
+    });
+
+    console.log('looking for opportunity');
+
+    console.log(`${lowestAsk1.price} < ${highestBid2.price}`);
     if (lowestAsk1.price < highestBid2.price) { // 1 is coinbase, 2 is proton dex
       const opportunity = {};
       opportunity.lowestAsk1 = lowestAsk1;
@@ -41,8 +62,7 @@ class ArbitrageEngine {
       return opportunity;
     }
 
-    const lowestAsk2 = orderbook1.asks.min();
-    const highestBid1 = orderbook2.bids.max();
+    console.log(`${lowestAsk2.price} < ${highestBid1.price}`);
     if (lowestAsk2.price < highestBid1.price) { // 1 is coinbase, 2 is proton dex
       const opportunity = {};
       opportunity.lowestAsk2 = lowestAsk2;

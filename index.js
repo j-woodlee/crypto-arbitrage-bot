@@ -1,5 +1,5 @@
 const { default: Logger } = require('@metalpay/metal-nebula-logger');
-// const { default: ccxt } = require('@metalpay/metal-ccxt-lib');
+const { default: ccxt } = require('@metalpay/metal-ccxt-lib');
 const OrderBookService = require('./orderbookService');
 const secrets = require('./secrets.json');
 const { ArbitrageEngine } = require('./utils');
@@ -27,33 +27,33 @@ const { ArbitrageEngine } = require('./utils');
 //   return protonDex;
 // };
 
-// const initCoinbase = async () => {
-//   // eslint-disable-next-line new-cap
-//   const coinbase = new ccxt.coinbase({
-//     apiKey: secrets.coinbaseApiKey,
-//     secret: secrets.coinbaseSecret,
-//   });
-//   await coinbase.loadMarkets();
-//   return coinbase;
-// };
+const initCoinbase = async () => {
+  // eslint-disable-next-line new-cap
+  const coinbase = new ccxt.coinbase({
+    apiKey: secrets.coinbaseApiKey2,
+    secret: secrets.coinbaseApiSecret2,
+  });
+  await coinbase.loadMarkets();
+  return coinbase;
+};
 
 (async () => {
   const logger = Logger('arb bot');
   const exchangeProducts = [
     // {
     //   exchangeName: 'Coinbase',
-    //   localSymbol: 'BTC/USD',
+    //   localSymbol: 'BTC-USD',
     //   product: {
     //     counterProductPrecision: 6,
     //   },
     // },
-    {
-      exchangeName: 'ProtonDex',
-      localSymbol: 'XBTC_XMD',
-      product: {
-        counterProductPrecision: 6,
-      },
-    },
+    // {
+    //   exchangeName: 'ProtonDex',
+    //   localSymbol: 'XBTC_XMD',
+    //   product: {
+    //     counterProductPrecision: 6,
+    //   },
+    // },
     // {
     //   exchangeName: 'ProtonDex',
     //   localSymbol: 'XPR_XMD',
@@ -73,27 +73,37 @@ const { ArbitrageEngine } = require('./utils');
   // const coinbaseProtonDexArb = new ArbitrageEngine();
   // console.log('subscribers.ProtonDex.orderBooks.XBTC_XMD: ');
   // console.log(subscribers.ProtonDex.orderBooks.XBTC_XMD);
-  let liveCheck = { liveCount: exchangeProducts.length };
-  while (liveCheck.liveCount === exchangeProducts.length) {
-    const opportunity = ArbitrageEngine.findOpportunity(
-      subscribers.ProtonDex.orderBooks.XBTC_XMD,
-      subscribers.ProtonDex.orderBooks.XBTC_XMD,
-    );
-    console.log('opportunity: ');
-    console.log(opportunity);
-    liveCheck = orderBookService.checkOrderBooks();
-    console.log('liveCheck: ');
-    console.log(liveCheck);
-    // await new Promise((r) => { setTimeout(r, 5000); });
-  }
+  // let liveCheck = { liveCount: exchangeProducts.length };
+  // liveCheck = orderBookService.checkOrderBooks();
+  // console.log('liveCheck: ');
+  // console.log(liveCheck);
+  // let notLive = false;
+  // while (!notLive) {
+  //   if (!subscribers.Coinbase.orderBooks['BTC-USD'].isLive() || !subscribers.ProtonDex.orderBooks.XBTC_XMD.isLive()) {
+  //     // eslint-disable-next-line no-await-in-loop
+  //     await new Promise((r) => { setTimeout(r, 5000); }); // the websockets could be initializing
+  //     if (!subscribers.Coinbase.orderBooks['BTC-USD'].isLive() || !subscribers.ProtonDex.orderBooks.XBTC_XMD.isLive()) {
+  //       notLive = true;
+  //     }
+  //   }
+  //   // console.log('subscribers.Coinbase.orderBooks[BTC-USD]: ');
+  //   // console.log(subscribers.Coinbase.orderBooks['BTC-USD']);
+  //   const opportunity = ArbitrageEngine.findOpportunity(
+  //     subscribers.Coinbase.orderBooks['BTC-USD'],
+  //     subscribers.ProtonDex.orderBooks.XBTC_XMD,
+  //   );
+  //   console.log('opportunity: ');
+  //   console.log(opportunity);
+  //   if (opportunity) {
+  //     // execute orders
+  //   }
+  //   await new Promise((r) => { setTimeout(r, 5000); });
+  // }
 
   // const protonDex = await initProtonDex(logger);
   // console.log('protonDex');
   // console.log(protonDex);
-  // const coinbase = initCoinbase();
-  // if (opportunity) {
-  //   create order on coinbase
-  //   create order on proton dex
-  //   profit
-  // }
+  const coinbase = await initCoinbase();
+  console.log('coinbase: ');
+  console.log(coinbase);
 })();
