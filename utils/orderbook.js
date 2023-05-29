@@ -38,10 +38,14 @@ class OrderBook {
       this.empty();
     }
     bids.forEach((bid) => {
-      this.bids.insert(bid);
+      if (bid.qty > 0) {
+        this.bids.insert(bid);
+      }
     });
     asks.forEach((ask) => {
-      this.asks.insert(ask);
+      if (ask.qty > 0) {
+        this.asks.insert(ask);
+      }
     });
   }
 

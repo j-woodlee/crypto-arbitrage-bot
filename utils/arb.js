@@ -100,6 +100,8 @@ class ArbitrageEngine {
   }
 
   static isOpportunityProfitable(opportunity) {
+    console.log('opportunity: ');
+    console.log(opportunity);
     if (opportunity.trades.length > 2) {
       return false; // only support 2 trades right now
     }
