@@ -2,7 +2,7 @@ const Promise = require('bluebird');
 
 const FEE_SCHEDULE = {
   Coinbase: {
-    maker: 0.004,
+    maker: 0.006,
     taker: 0.006,
   },
   ProtonDex: {
@@ -10,6 +10,8 @@ const FEE_SCHEDULE = {
     taker: 0.001,
   },
 };
+
+const ACCOUNT_SIZE_LIMIT = 30;
 
 class ArbitrageEngine {
   constructor(ccxtExchanges, logger) {
@@ -35,9 +37,9 @@ class ArbitrageEngine {
       const buyPrice = lowestAsk1.price;
       const sellPrice = highestBid2.price;
       const amountCounterCurrencyBuy = buyPrice * amountToBuy;
-      if (amountCounterCurrencyBuy > 50) { // limited by exchange balances
+      if (amountCounterCurrencyBuy > ACCOUNT_SIZE_LIMIT) { // limited by exchange balances
         this.logger.info('limiting the opportunity to the exchange balance');
-        amountToBuy = 50 / buyPrice; // base = counter / (counter / base)
+        amountToBuy = ACCOUNT_SIZE_LIMIT / buyPrice; // base = counter / (counter / base)
       }
       opportunity.trades = [{
         side: 'buy',
@@ -70,9 +72,9 @@ class ArbitrageEngine {
       const buyPrice = lowestAsk2.price;
       const sellPrice = highestBid1.price;
       const amountCounterCurrencyBuy = buyPrice * amountToBuy;
-      if (amountCounterCurrencyBuy > 50) {
+      if (amountCounterCurrencyBuy > ACCOUNT_SIZE_LIMIT) {
         this.logger.info('limiting the opportunity to the exchange balance');
-        amountToBuy = 50 / buyPrice; // base = counter / (counter / base)
+        amountToBuy = ACCOUNT_SIZE_LIMIT / buyPrice; // base = counter / (counter / base)
       }
       opportunity.trades = [{
         side: 'buy',
@@ -164,7 +166,7 @@ class ArbitrageEngine {
               amountToSend,
               priceToSend,
               {
-                post_only: true, // for coinbase
+                post_only: false, // for coinbase
               },
             );
         } catch (e) {
@@ -203,7 +205,7 @@ class ArbitrageEngine {
   async tradesFinished(trades) {
     const filledStatuses = await Promise.map(trades, async (trade) => {
       const fetchedOrder = this.ccxtExchanges[trade.exchangeName]
-        .fetcheOrder(trade.orderId, trade.symbol, {});
+        .fetchOrder(trade.orderId, trade.symbol, {});
       return fetchedOrder.remaining === 0;
     });
 
