@@ -138,6 +138,8 @@ class ArbitrageEngine {
         symbol, side, amount, price,
       } = trade;
       const type = 'limit';
+      const amountToSend = amount.toFixed(8);
+      const priceToSend = price.toString();
 
       console.log('symbol: ');
       console.log(symbol);
@@ -145,19 +147,30 @@ class ArbitrageEngine {
       console.log(type);
       console.log('side: ');
       console.log(side);
-      console.log('amount: ');
-      console.log(amount);
-      console.log('price: ');
-      console.log(price);
-      console.log();
+      console.log('amountToSend: ');
+      console.log(amountToSend);
+      console.log('priceToSend: ');
+      console.log(priceToSend);
 
       const exchange = this.ccxtExchanges[trade.exchangeName];
       let order;
       if (trade.exchangeName === 'Coinbase') {
-        order = await exchange
-          .createOrder(symbol, type, side, amount, price, {
-            post_only: true, // for coinbase
-          });
+        try {
+          order = await exchange
+            .createOrder(
+              symbol,
+              type,
+              side,
+              amountToSend,
+              priceToSend,
+              {
+                post_only: true, // for coinbase
+              },
+            );
+        } catch (e) {
+          this.logger.error(`error attempting to create an order on coinbase: ${e.stack}`);
+          throw e;
+        }
       } else if (trade.exchangeName === 'ProtonDex') {
         order = await exchange
           .createOrder(symbol, type, side, amount, price, {

@@ -88,7 +88,6 @@ const initCoinbase = async () => {
     ProtonDex: protonDex,
     Coinbase: coinbase,
   }, logger);
-
   let live = true;
   while (live) {
     if (!subscribers.Coinbase.orderBooks['BTC-USD'].isLive() || !subscribers.ProtonDex.orderBooks.XBTC_XMD.isLive()) {
@@ -107,10 +106,8 @@ const initCoinbase = async () => {
       subscribers.ProtonDex.orderBooks.XETH_XMD,
     );
     if (opportunityEth) {
-      console.log('would have executed');
-      console.log(opportunityEth);
       // eslint-disable-next-line no-await-in-loop
-      // await arbEngine.executeOpportunity(opportunity);
+      await arbEngine.executeOpportunity(opportunityEth);
     }
 
     // if (opportunityBtc) {
@@ -122,7 +119,7 @@ const initCoinbase = async () => {
 
     console.log('waiting 20 seconds...');
     // eslint-disable-next-line no-await-in-loop
-    await new Promise((r) => { setTimeout(r, 2000); });
+    await new Promise((r) => { setTimeout(r, 20000); });
     console.log();
     console.log();
   }
