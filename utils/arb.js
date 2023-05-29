@@ -11,7 +11,7 @@ const FEE_SCHEDULE = {
   },
 };
 
-const ACCOUNT_SIZE_LIMIT = 30;
+const ACCOUNT_SIZE_LIMIT = 10;
 
 class ArbitrageEngine {
   constructor(ccxtExchanges, logger) {
@@ -38,7 +38,7 @@ class ArbitrageEngine {
       const sellPrice = highestBid2.price;
       const amountCounterCurrencyBuy = buyPrice * amountToBuy;
       if (amountCounterCurrencyBuy > ACCOUNT_SIZE_LIMIT) { // limited by exchange balances
-        this.logger.info('limiting the opportunity to the exchange balance');
+        this.logger.warn(`limiting the opportunity to ${ACCOUNT_SIZE_LIMIT} due to the exchange balance`);
         amountToBuy = ACCOUNT_SIZE_LIMIT / buyPrice; // base = counter / (counter / base)
       }
       opportunity.trades = [{
@@ -57,9 +57,9 @@ class ArbitrageEngine {
         exchangeName: orderbook2.exchangeName,
         symbol: orderbook2.symbol,
       }];
-      console.log('opportunity: ');
-      console.log(opportunity);
-      return ArbitrageEngine.isOpportunityProfitable(opportunity) ? opportunity : undefined;
+      if (ArbitrageEngine.isOpportunityProfitable(opportunity)) {
+        return opportunity;
+      }
     }
 
     console.log(`${lowestAsk2.price} < ${highestBid1.price}`);
@@ -73,7 +73,7 @@ class ArbitrageEngine {
       const sellPrice = highestBid1.price;
       const amountCounterCurrencyBuy = buyPrice * amountToBuy;
       if (amountCounterCurrencyBuy > ACCOUNT_SIZE_LIMIT) {
-        this.logger.info('limiting the opportunity to the exchange balance');
+        this.logger.warn(`limiting the opportunity to ${ACCOUNT_SIZE_LIMIT} due to the exchange balance`);
         amountToBuy = ACCOUNT_SIZE_LIMIT / buyPrice; // base = counter / (counter / base)
       }
       opportunity.trades = [{
@@ -93,9 +93,9 @@ class ArbitrageEngine {
         symbol: orderbook1.symbol,
       }];
 
-      console.log('opportunity: ');
-      console.log(opportunity);
-      return ArbitrageEngine.isOpportunityProfitable(opportunity) ? opportunity : undefined;
+      if (ArbitrageEngine.isOpportunityProfitable(opportunity)) {
+        return opportunity;
+      }
     }
 
     return undefined;
@@ -132,9 +132,8 @@ class ArbitrageEngine {
 
   async executeOpportunity(opportunity) {
     // const trades = ArbitrageEngine.putCoinbaseTradesFirst(opportunity.trades);
+    this.logger.info(opportunity);
     const { trades } = opportunity;
-    console.log('trades: ');
-    console.log(trades);
     const requestedTrades = await Promise.map(trades, async (trade) => {
       const {
         symbol, side, amount, price,

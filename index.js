@@ -88,19 +88,23 @@ const initCoinbase = async () => {
     ProtonDex: protonDex,
     Coinbase: coinbase,
   }, logger);
+  let liveCheck = null;
   let live = true;
   while (live) {
-    if (!subscribers.Coinbase.orderBooks['BTC-USD'].isLive() || !subscribers.ProtonDex.orderBooks.XBTC_XMD.isLive()) {
-    // eslint-disable-next-line no-await-in-loop
-      await new Promise((r) => { setTimeout(r, 5000); }); // the websockets could be initializing
-      if (!subscribers.Coinbase.orderBooks['BTC-USD'].isLive() || !subscribers.ProtonDex.orderBooks.XBTC_XMD.isLive()) {
+    if (!liveCheck) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => { setTimeout(r, 5000); }); // wait 5 seconds for sockets to startup
+      liveCheck = orderBookService.checkOrderBooks();
+      console.log('liveCheck: ');
+      console.log(liveCheck);
+      if (liveCheck.deadSocketConnections > 0) {
         live = false;
       }
     }
-    // const opportunityBtc = arbEngine.findOpportunity(
-    //   subscribers.Coinbase.orderBooks['BTC-USD'],
-    //   subscribers.ProtonDex.orderBooks.XBTC_XMD,
-    // );
+    const opportunityBtc = arbEngine.findOpportunity(
+      subscribers.Coinbase.orderBooks['BTC-USD'],
+      subscribers.ProtonDex.orderBooks.XBTC_XMD,
+    );
     const opportunityEth = arbEngine.findOpportunity(
       subscribers.Coinbase.orderBooks['ETH-USD'],
       subscribers.ProtonDex.orderBooks.XETH_XMD,
@@ -110,17 +114,13 @@ const initCoinbase = async () => {
       await arbEngine.executeOpportunity(opportunityEth);
     }
 
-    // if (opportunityBtc) {
-    //   console.log('would have executed');
-    //   console.log(opportunityBtc);
-    //   // eslint-disable-next-line no-await-in-loop
-    //   // await arbEngine.executeOpportunity(opportunity);
-    // }
+    if (opportunityBtc) {
+      // eslint-disable-next-line no-await-in-loop
+      await arbEngine.executeOpportunity(opportunityBtc);
+    }
 
-    console.log('waiting 20 seconds...');
+    logger.info('next checking for opportunities in 5 seconds...\n\n');
     // eslint-disable-next-line no-await-in-loop
-    await new Promise((r) => { setTimeout(r, 20000); });
-    console.log();
-    console.log();
+    await new Promise((r) => { setTimeout(r, 5000); });
   }
 })();
