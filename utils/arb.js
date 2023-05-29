@@ -175,7 +175,7 @@ class ArbitrageEngine {
         }
       } else if (trade.exchangeName === 'ProtonDex') {
         order = await exchange
-          .createOrder(symbol, type, side, amount, price, {
+          .createOrder(symbol, type, side, amountToSend, priceToSend, {
             localSymbol: trade.symbol, // for dex
             quoteCurrencyQty: trade.amountCounterCurrency, // for dex
             fillType: 0, // for dex
@@ -184,9 +184,6 @@ class ArbitrageEngine {
         throw new Error('we do not support this exchange');
       }
 
-      console.log('order: ');
-      console.log(order);
-
       const requestedTrade = trade;
       requestedTrade.orderId = order.id;
       return requestedTrade;
@@ -194,12 +191,10 @@ class ArbitrageEngine {
 
     let tradesFinished = await this.tradesFinished(requestedTrades);
     while (!tradesFinished) {
-      this.logger.info('orders not filled yet, waiting for fill');
       // eslint-disable-next-line no-await-in-loop
       tradesFinished = await this.tradesFinished(requestedTrades);
     }
     this.logger.info(`Opportunity executed, trades: ${trades}`);
-    throw new Error('congrats you executed!');
   }
 
   async tradesFinished(trades) {
