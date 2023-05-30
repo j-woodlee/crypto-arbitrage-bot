@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 const Promise = require('bluebird');
 
 const FEE_SCHEDULE = {
@@ -14,10 +15,62 @@ const FEE_SCHEDULE = {
 const ACCOUNT_SIZE_LIMIT = 10;
 
 class ArbitrageEngine {
-  constructor(ccxtExchanges, logger) {
+  constructor(ccxtExchanges, accountBalances, logger) {
     this.ccxtExchanges = ccxtExchanges;
+    this.accountBalances = accountBalances;
     this.logger = logger;
   }
+
+  checkFunds(opportunity) {
+    const { trades } = opportunity;
+    let canBuy = false;
+    let canSell = false;
+    trades.forEach((trade) => {
+      if (trade.side === 'buy') { // need enough counter currency
+        const balanceCounterCurrency = this.accountBalances[trade.exchangeName][trade.counterCurrency];
+        if (balanceCounterCurrency.value > trade.amountCounterCurrency) {
+          canBuy = true;
+        }
+      } else if (trade.side === 'sell') { // need enough base currency
+        const balanceBaseCurrency = this.accountBalances[trade.exchangeName][trade.baseCurrency];
+        if (balanceBaseCurrency.value > trade.amount) {
+          canSell = true;
+        }
+      }
+    });
+    return canBuy && canSell;
+  }
+
+  updateBalances(accountBalances) {
+    this.accountBalances = accountBalances;
+  }
+
+  // adjustBalancesAfterTrade(opportunity) {
+  //   const { trades } = opportunity;
+  //   trades.forEach((trade) => {
+  //     const balanceCounterCurrencyValue = this.accountBalances[trade.exchangeName][trade.counterCurrency].value;
+  //     const balanceBaseCurrencyValue = this.accountBalances[trade.exchangeName][trade.baseCurrency].value;
+  //     if (trade.side === 'buy') {
+  //       const balanceCounterCurrencyAdjusted = balanceCounterCurrencyValue - trade.amountCounterCurrency;
+  //       const balanceBaseCurrencyAdjusted = balanceBaseCurrencyValue + trade.amount;
+  //       this.accountBalances[trade.exchangeName][trade.baseCurrency].value = balanceBaseCurrencyAdjusted;
+  //       this.accountBalances[trade.exchangeName][trade.counterCurrency].value = balanceCounterCurrencyAdjusted;
+  //     } else if (trade.side === 'sell') {
+  //       const balanceCounterCurrencyAdjusted = balanceCounterCurrencyValue + trade.amountCounterCurrency;
+  //       const balanceBaseCurrencyAdjusted = balanceBaseCurrencyValue - trade.amount;
+  //       this.accountBalances[trade.exchangeName][trade.baseCurrency].value = balanceBaseCurrencyAdjusted;
+  //       this.accountBalances[trade.exchangeName][trade.counterCurrency].value = balanceCounterCurrencyAdjusted;
+  //     }
+  //   });
+  // }
+
+  // getAmountToBuy(lowestAsk, highestBid, askSymbol, bidSymbol, askExchange, bidExchange) {
+  //   const initialAmount = Math.min(lowestAsk.qty, highestBid.qty);
+  //   const askBalance = this.accountBalances[askExchange][askSymbol].value;
+  //   const bidBalance = this.accountBalances[bidExchange][bidSymbol].value;
+  //   if (initialAmount > ) {
+  //   }
+  // }
 
   findOpportunity(orderbook1, orderbook2) {
     const lowestAsk1 = orderbook1.asks.min();
@@ -25,41 +78,7 @@ class ArbitrageEngine {
     const lowestAsk2 = orderbook2.asks.min();
     const highestBid2 = orderbook2.bids.min();
 
-    // console.log(`${lowestAsk1.price} < ${highestBid2.price}`);
-    if (lowestAsk1.price < highestBid2.price) {
-      const opportunity = {};
-      opportunity.lowestAsk1 = lowestAsk1;
-      opportunity.highestBid2 = highestBid2;
-      // take the lowest of the two quantities
-      let amountToBuy = Math.min(lowestAsk1.qty, highestBid2.qty);
-      const buyPrice = lowestAsk1.price;
-      const sellPrice = highestBid2.price;
-      const amountCounterCurrencyBuy = buyPrice * amountToBuy;
-      if (amountCounterCurrencyBuy > ACCOUNT_SIZE_LIMIT) { // limited by exchange balances
-        amountToBuy = ACCOUNT_SIZE_LIMIT / buyPrice; // base = counter / (counter / base)
-      }
-      opportunity.trades = [{
-        side: 'buy',
-        amount: amountToBuy, // in base currency
-        price: buyPrice,
-        amountCounterCurrency: buyPrice * amountToBuy,
-        exchangeName: orderbook1.exchangeName,
-        symbol: orderbook1.symbol,
-      },
-      {
-        side: 'sell',
-        amount: amountToBuy,
-        price: sellPrice,
-        amountCounterCurrency: sellPrice * amountToBuy,
-        exchangeName: orderbook2.exchangeName,
-        symbol: orderbook2.symbol,
-      }];
-      if (this.isOpportunityProfitable(opportunity)) {
-        return opportunity;
-      }
-    }
-
-    // console.log(`${lowestAsk2.price} < ${highestBid1.price}`);
+    this.logger.info(`${lowestAsk2.price} < ${highestBid1.price}`);
     if (lowestAsk2.price < highestBid1.price) {
       const opportunity = {};
       opportunity.lowestAsk2 = lowestAsk2;
@@ -79,6 +98,8 @@ class ArbitrageEngine {
         amountCounterCurrency: buyPrice * amountToBuy,
         exchangeName: orderbook2.exchangeName,
         symbol: orderbook2.symbol,
+        baseCurrency: orderbook2.baseCurrency,
+        counterCurrency: orderbook2.counterCurrency,
       },
       {
         side: 'sell',
@@ -87,9 +108,57 @@ class ArbitrageEngine {
         amountCounterCurrency: sellPrice * amountToBuy,
         exchangeName: orderbook1.exchangeName,
         symbol: orderbook1.symbol,
+        baseCurrency: orderbook1.baseCurrency,
+        counterCurrency: orderbook1.counterCurrency,
       }];
 
-      if (this.isOpportunityProfitable(opportunity)) {
+      const balanceBigEnough = this.checkFunds(opportunity);
+      this.logger.info(`${opportunity.trades[0].side} ${opportunity.trades[0].amount} ${opportunity.trades[0].symbol} at ${opportunity.trades[0].price} on ${opportunity.trades[0].exchangeName}, 
+                              ${opportunity.trades[1].side} ${opportunity.trades[1].amount} ${opportunity.trades[1].symbol} at ${opportunity.trades[1].price} on ${opportunity.trades[1].exchangeName}
+                              balanceBigEnough: ${balanceBigEnough}`);
+      if (balanceBigEnough && this.isOpportunityProfitable(opportunity)) {
+        return opportunity;
+      }
+    }
+
+    this.logger.info(`${lowestAsk1.price} < ${highestBid2.price}`);
+    if (lowestAsk1.price < highestBid2.price) {
+      const opportunity = {};
+      opportunity.lowestAsk1 = lowestAsk1;
+      opportunity.highestBid2 = highestBid2;
+      // take the lowest of the two quantities
+      let amountToBuy = Math.min(lowestAsk1.qty, highestBid2.qty);
+      const buyPrice = lowestAsk1.price;
+      const sellPrice = highestBid2.price;
+      const amountCounterCurrencyBuy = buyPrice * amountToBuy;
+      if (amountCounterCurrencyBuy > ACCOUNT_SIZE_LIMIT) { // limited by exchange balances
+        amountToBuy = ACCOUNT_SIZE_LIMIT / buyPrice; // base = counter / (counter / base)
+      }
+      opportunity.trades = [{
+        side: 'buy',
+        amount: amountToBuy, // in base currency
+        price: buyPrice,
+        amountCounterCurrency: buyPrice * amountToBuy,
+        exchangeName: orderbook1.exchangeName,
+        symbol: orderbook1.symbol,
+        baseCurrency: orderbook1.baseCurrency,
+        counterCurrency: orderbook1.counterCurrency,
+      },
+      {
+        side: 'sell',
+        amount: amountToBuy,
+        price: sellPrice,
+        amountCounterCurrency: sellPrice * amountToBuy,
+        exchangeName: orderbook2.exchangeName,
+        symbol: orderbook2.symbol,
+        baseCurrency: orderbook2.baseCurrency,
+        counterCurrency: orderbook2.counterCurrency,
+      }];
+      const balanceBigEnough = this.checkFunds(opportunity);
+      this.logger.info(`${opportunity.trades[0].side} ${opportunity.trades[0].amount} ${opportunity.trades[0].symbol} at ${opportunity.trades[0].price} on ${opportunity.trades[0].exchangeName}, 
+                              ${opportunity.trades[1].side} ${opportunity.trades[1].amount} ${opportunity.trades[1].symbol} at ${opportunity.trades[1].price} on ${opportunity.trades[1].exchangeName}
+                              balanceBigEnough: ${balanceBigEnough}`);
+      if (balanceBigEnough && this.isOpportunityProfitable(opportunity)) {
         return opportunity;
       }
     }
@@ -113,9 +182,7 @@ class ArbitrageEngine {
     );
 
     const profit = revenueInCounterCurrency - totalFeesInCounterCurrency;
-    this.logger.info(`${opportunity.trades[0].side} ${opportunity.trades[0].amount} ${opportunity.trades[0].symbol} at ${opportunity.trades[0].price} on ${opportunity.trades[0].exchangeName}, 
-                              ${opportunity.trades[1].side} ${opportunity.trades[1].amount} ${opportunity.trades[1].symbol} at ${opportunity.trades[1].price} on ${opportunity.trades[1].exchangeName}
-                              profit: ${profit}`);
+    this.logger.info(`profit: ${profit}`);
     if (profit > 0) {
       return true;
     }
@@ -173,11 +240,6 @@ class ArbitrageEngine {
       return requestedTrade;
     });
 
-    // let tradesFinished = await this.tradesFinished(requestedTrades);
-    // while (!tradesFinished) {
-    //   // eslint-disable-next-line no-await-in-loop
-    //   tradesFinished = await this.tradesFinished(requestedTrades);
-    // }
     this.logger.info(`Opportunity executed, trades: ${JSON.stringify(requestedTrades)}`);
   }
 

@@ -1,6 +1,7 @@
 const { default: Logger } = require('@metalpay/metal-nebula-logger');
 const { default: ccxt } = require('@metalpay/metal-ccxt-lib');
 const moment = require('moment');
+const Promise = require('bluebird');
 const OrderBookService = require('./orderbookService');
 const secrets = require('./secrets.json');
 const { ArbitrageEngine } = require('./utils');
@@ -43,6 +44,26 @@ const initCoinbase = async () => {
   return coinbase;
 };
 
+const getAccountBalances = async (ccxtExchanges) => {
+  // console.log('ccxtExchanges: ');
+  // console.log(ccxtExchanges);
+  const accountBalances = {};
+  await Promise.each(ccxtExchanges, async (exchange) => {
+    const exchangeName = exchange.name;
+    accountBalances[exchangeName] = {};
+    const accounts = await exchange.fetchAccounts();
+    // eslint-disable-next-line no-restricted-syntax
+    for (const account of accounts) {
+      if (account.type === 'wallet') {
+        const balance = account.info.available_balance;
+        balance.value = parseFloat(balance.value);
+        accountBalances[exchangeName][account.code] = balance;
+      }
+    }
+  });
+  return accountBalances;
+};
+
 (async () => {
   const logger = Logger('arb bot');
   const exchangeProducts = [
@@ -52,6 +73,8 @@ const initCoinbase = async () => {
       product: {
         counterProductPrecision: 6,
       },
+      baseCurrency: 'BTC',
+      counterCurrency: 'USD',
     },
     {
       exchangeName: 'Coinbase',
@@ -59,6 +82,8 @@ const initCoinbase = async () => {
       product: {
         counterProductPrecision: 6,
       },
+      baseCurrency: 'ETH',
+      counterCurrency: 'USD',
     },
     {
       exchangeName: 'ProtonDex',
@@ -66,6 +91,8 @@ const initCoinbase = async () => {
       product: {
         counterProductPrecision: 6,
       },
+      baseCurrency: 'XBTC',
+      counterCurrency: 'XMD',
     },
     {
       exchangeName: 'ProtonDex',
@@ -73,24 +100,34 @@ const initCoinbase = async () => {
       product: {
         counterProductPrecision: 6,
       },
+      baseCurrency: 'XETH',
+      counterCurrency: 'XMD',
     },
   ];
+
   // TODO: get exchange balances at this point,
   // use them going forward to prevent opportunities from executing
   const protonDex = await initProtonDex(logger);
   const coinbase = await initCoinbase();
+  const accountBalances = await getAccountBalances([protonDex, coinbase]);
   const orderBookService = new OrderBookService(
     exchangeProducts,
     secrets,
     logger,
   );
 
+  console.log(accountBalances);
+
   await orderBookService.start();
   const subscribers = orderBookService.getSubscribers();
-  const arbEngine = new ArbitrageEngine({
-    ProtonDex: protonDex,
-    Coinbase: coinbase,
-  }, logger);
+  const arbEngine = new ArbitrageEngine(
+    {
+      ProtonDex: protonDex,
+      Coinbase: coinbase,
+    },
+    accountBalances,
+    logger,
+  );
   let liveCheck = null;
   let live = true;
   while (live) {
@@ -129,7 +166,13 @@ const initCoinbase = async () => {
     }
 
     logger.info('next checking for opportunities in 8 seconds...\n\n\n\n');
+
     // eslint-disable-next-line no-await-in-loop
     await new Promise((r) => { setTimeout(r, 8000); });
+    // eslint-disable-next-line no-await-in-loop
+    const balances = await getAccountBalances([protonDex, coinbase]);
+    arbEngine.updateBalances(balances);
+    console.log('arbEngine.accountBalances: ');
+    console.log(arbEngine.accountBalances);
   }
 })();

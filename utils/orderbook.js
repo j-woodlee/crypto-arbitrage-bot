@@ -24,11 +24,13 @@ const updateEntry = function (tree, entry) {
 };
 
 class OrderBook {
-  constructor(exchangeName, symbol) {
+  constructor(exchangeName, symbol, baseCurrency, counterCurrency) {
     this.bids = new RBTree(largestFirst);
     this.asks = new RBTree(smallestFirst);
     this.exchangeName = exchangeName;
     this.symbol = symbol;
+    this.baseCurrency = baseCurrency;
+    this.counterCurrency = counterCurrency;
   }
 
   init(bids, asks) {

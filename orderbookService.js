@@ -79,7 +79,7 @@ class OrderBookService {
           let lastUpdated = sub.orderBooks[localSymbol].updatedAt;
           lastUpdated = lastUpdated ? lastUpdated.toDate() : null;
           liveCheck.unresponsiveOrderbookCount += 1;
-          liveCheck.unresponsiveOrderbookCount.push({ name: `${exchangeName}-${localSymbol}`, lastUpdated });
+          liveCheck.deadSocketConnections.push({ name: `${exchangeName}-${localSymbol}`, lastUpdated });
         }
       });
     });
