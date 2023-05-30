@@ -26,7 +26,7 @@ class ArbitrageEngine {
     const lowestAsk2 = orderbook2.asks.min();
     const highestBid2 = orderbook2.bids.min();
 
-    console.log(`${lowestAsk1.price} < ${highestBid2.price}`);
+    // console.log(`${lowestAsk1.price} < ${highestBid2.price}`);
     if (lowestAsk1.price < highestBid2.price) {
       const opportunity = {};
       opportunity.lowestAsk1 = lowestAsk1;
@@ -60,7 +60,7 @@ class ArbitrageEngine {
       }
     }
 
-    console.log(`${lowestAsk2.price} < ${highestBid1.price}`);
+    // console.log(`${lowestAsk2.price} < ${highestBid1.price}`);
     if (lowestAsk2.price < highestBid1.price) {
       const opportunity = {};
       opportunity.lowestAsk2 = lowestAsk2;
@@ -127,8 +127,6 @@ class ArbitrageEngine {
   }
 
   async executeOpportunity(opportunity) {
-    // const trades = ArbitrageEngine.putCoinbaseTradesFirst(opportunity.trades);
-    // this.logger.info(JSON.stringify(opportunity));
     const { trades } = opportunity;
     const requestedTrades = await Promise.map(trades, async (trade) => {
       const {
@@ -138,21 +136,13 @@ class ArbitrageEngine {
       const amountToSend = amount.toString();
       const priceToSend = price.toString();
 
-      console.log('symbol: ');
-      console.log(symbol);
-      console.log('type: ');
-      console.log(type);
-      console.log('side: ');
-      console.log(side);
-      console.log('amountToSend: ');
-      console.log(amountToSend);
-      console.log('priceToSend: ');
-      console.log(priceToSend);
-
       const exchange = this.ccxtExchanges[trade.exchangeName];
       let order;
       if (trade.exchangeName === 'Coinbase') {
-        console.log('executing coinbase order');
+        const params = {
+          post_only: false,
+        };
+        this.logger.info(`executing Coinbase order ${symbol}, ${type}, ${side}, ${amountToSend}, ${priceToSend}, ${JSON.stringify(params)}`);
         order = await exchange
           .createOrder(
             symbol,
@@ -160,18 +150,17 @@ class ArbitrageEngine {
             side,
             amountToSend,
             priceToSend,
-            {
-              post_only: false, // for coinbase
-            },
+            params,
           );
       } else if (trade.exchangeName === 'ProtonDex') {
-        console.log('executing proton dex order');
+        const params = {
+          localSymbol: trade.symbol, // for dex
+          quoteCurrencyQty: trade.amountCounterCurrency, // for dex
+          fillType: 0, // for dex
+        };
+        this.logger.info(`executing Protondex order ${symbol}, ${type}, ${side}, ${amountToSend}, ${priceToSend}, ${JSON.stringify(params)}`);
         order = await exchange
-          .createOrder(symbol, type, side, amountToSend, priceToSend, {
-            localSymbol: trade.symbol, // for dex
-            quoteCurrencyQty: trade.amountCounterCurrency, // for dex
-            fillType: 0, // for dex
-          });
+          .createOrder(symbol, type, side, amountToSend, priceToSend, params);
       } else {
         throw new Error('we do not support this exchange');
       }
@@ -190,7 +179,7 @@ class ArbitrageEngine {
   }
 
   async tradesFinished(trades) {
-    const filledStatuses = await Promise.map(trades, async (trade) => {
+    const filledStatuses = await Promise.mapSeries(trades, async (trade) => {
       const fetchedOrder = this.ccxtExchanges[trade.exchangeName]
         .fetchOrder(trade.orderId, trade.symbol, {});
       return fetchedOrder.remaining === 0;
