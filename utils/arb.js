@@ -99,8 +99,8 @@ class ArbitrageEngine {
   }
 
   static isOpportunityProfitable(opportunity) {
-    console.log('opportunity: ');
-    console.log(opportunity);
+    // console.log('opportunity: ');
+    // console.log(opportunity);
     if (opportunity.trades.length > 2) {
       return false; // only support 2 trades right now
     }
@@ -115,10 +115,10 @@ class ArbitrageEngine {
       opportunity.trades[0].amountCounterCurrency - opportunity.trades[1].amountCounterCurrency,
     );
 
-    console.log(`revenueInCounterCurrency: ${revenueInCounterCurrency}`);
-    console.log(`totalFeesInCounterCurrency: ${totalFeesInCounterCurrency}`);
+    // console.log(`revenueInCounterCurrency: ${revenueInCounterCurrency}`);
+    // console.log(`totalFeesInCounterCurrency: ${totalFeesInCounterCurrency}`);
     const profit = revenueInCounterCurrency - totalFeesInCounterCurrency;
-    console.log(`profit: ${profit}`);
+    // console.log(`profit: ${profit}`);
     if (profit > 0) {
       return true;
     }
@@ -127,6 +127,8 @@ class ArbitrageEngine {
   }
 
   async executeOpportunity(opportunity) {
+    console.log('opportunity: ');
+    console.log(opportunity);
     const { trades } = opportunity;
     const requestedTrades = await Promise.map(trades, async (trade) => {
       const {
