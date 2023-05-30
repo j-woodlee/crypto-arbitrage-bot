@@ -19,6 +19,7 @@ class ArbitrageEngine {
     this.logger = logger;
   }
 
+  // eslint-disable-next-line class-methods-use-this
   findOpportunity(orderbook1, orderbook2) {
     const lowestAsk1 = orderbook1.asks.min();
     const highestBid1 = orderbook1.bids.min();
@@ -27,8 +28,6 @@ class ArbitrageEngine {
 
     console.log(`${lowestAsk1.price} < ${highestBid2.price}`);
     if (lowestAsk1.price < highestBid2.price) {
-      // TO DO: check more price levels to see if they satisfy this condition,
-      // if they do then we can use those quantities in our trades
       const opportunity = {};
       opportunity.lowestAsk1 = lowestAsk1;
       opportunity.highestBid2 = highestBid2;
@@ -116,13 +115,10 @@ class ArbitrageEngine {
       opportunity.trades[0].amountCounterCurrency - opportunity.trades[1].amountCounterCurrency,
     );
 
-    console.log('revenueInCounterCurrency: ');
-    console.log(revenueInCounterCurrency);
-    console.log('totalFeesInCounterCurrency: ');
-    console.log(totalFeesInCounterCurrency);
+    console.log(`revenueInCounterCurrency: ${revenueInCounterCurrency}`);
+    console.log(`totalFeesInCounterCurrency: ${totalFeesInCounterCurrency}`);
     const profit = revenueInCounterCurrency - totalFeesInCounterCurrency;
-    console.log('profit: ');
-    console.log(profit);
+    console.log(`profit: ${profit}`);
     if (profit > 0) {
       return true;
     }
@@ -132,7 +128,7 @@ class ArbitrageEngine {
 
   async executeOpportunity(opportunity) {
     // const trades = ArbitrageEngine.putCoinbaseTradesFirst(opportunity.trades);
-    this.logger.info(JSON.stringify(opportunity));
+    // this.logger.info(JSON.stringify(opportunity));
     const { trades } = opportunity;
     const requestedTrades = await Promise.map(trades, async (trade) => {
       const {

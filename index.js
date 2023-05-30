@@ -119,8 +119,8 @@ const initCoinbase = async () => {
       await arbEngine.executeOpportunity(opportunityBtc);
     }
 
-    logger.info('next checking for opportunities in 5 seconds...\n\n');
+    logger.info('next checking for opportunities in 8 seconds...\n\n');
     // eslint-disable-next-line no-await-in-loop
-    await new Promise((r) => { setTimeout(r, 5000); });
+    await new Promise((r) => { setTimeout(r, 8000); });
   }
 })();
