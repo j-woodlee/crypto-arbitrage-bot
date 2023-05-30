@@ -19,7 +19,6 @@ class ArbitrageEngine {
     this.logger = logger;
   }
 
-  // eslint-disable-next-line class-methods-use-this
   findOpportunity(orderbook1, orderbook2) {
     const lowestAsk1 = orderbook1.asks.min();
     const highestBid1 = orderbook1.bids.min();
@@ -55,7 +54,7 @@ class ArbitrageEngine {
         exchangeName: orderbook2.exchangeName,
         symbol: orderbook2.symbol,
       }];
-      if (ArbitrageEngine.isOpportunityProfitable(opportunity)) {
+      if (this.isOpportunityProfitable(opportunity)) {
         return opportunity;
       }
     }
@@ -90,7 +89,7 @@ class ArbitrageEngine {
         symbol: orderbook1.symbol,
       }];
 
-      if (ArbitrageEngine.isOpportunityProfitable(opportunity)) {
+      if (this.isOpportunityProfitable(opportunity)) {
         return opportunity;
       }
     }
@@ -98,9 +97,7 @@ class ArbitrageEngine {
     return undefined;
   }
 
-  static isOpportunityProfitable(opportunity) {
-    // console.log('opportunity: ');
-    // console.log(opportunity);
+  isOpportunityProfitable(opportunity) {
     if (opportunity.trades.length > 2) {
       return false; // only support 2 trades right now
     }
@@ -115,16 +112,20 @@ class ArbitrageEngine {
       opportunity.trades[0].amountCounterCurrency - opportunity.trades[1].amountCounterCurrency,
     );
 
-    // console.log(`revenueInCounterCurrency: ${revenueInCounterCurrency}`);
-    // console.log(`totalFeesInCounterCurrency: ${totalFeesInCounterCurrency}`);
     const profit = revenueInCounterCurrency - totalFeesInCounterCurrency;
-    // console.log(`profit: ${profit}`);
+    this.logger.info(`${opportunity.trades[0].side} ${opportunity.trades[0].amount} ${opportunity.trades[0].symbol} at ${opportunity.trades[0].price} on ${opportunity.trades[0].exchangeName}, 
+                              ${opportunity.trades[1].side} ${opportunity.trades[1].amount} ${opportunity.trades[1].symbol} at ${opportunity.trades[1].price} on ${opportunity.trades[1].exchangeName}
+                              profit: ${profit}`);
     if (profit > 0) {
       return true;
     }
 
     return false;
   }
+
+  // async executeOpportunities(opportunities) {
+  //   await Promise.map(opportunities, () => {});
+  // }
 
   async executeOpportunity(opportunity) {
     console.log('opportunity: ');

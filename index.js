@@ -1,5 +1,6 @@
 const { default: Logger } = require('@metalpay/metal-nebula-logger');
 const { default: ccxt } = require('@metalpay/metal-ccxt-lib');
+const moment = require('moment');
 const OrderBookService = require('./orderbookService');
 const secrets = require('./secrets.json');
 const { ArbitrageEngine } = require('./utils');
@@ -74,6 +75,8 @@ const initCoinbase = async () => {
       },
     },
   ];
+  // TODO: get exchange balances at this point,
+  // use them going forward to prevent opportunities from executing
   const protonDex = await initProtonDex(logger);
   const coinbase = await initCoinbase();
   const orderBookService = new OrderBookService(
@@ -91,14 +94,17 @@ const initCoinbase = async () => {
   let liveCheck = null;
   let live = true;
   while (live) {
-    if (!liveCheck) {
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((r) => { setTimeout(r, 5000); }); // wait 5 seconds for sockets to startup
+    if (!liveCheck || moment(liveCheck.lastCheck).isBefore(moment().subtract('10', 'minutes'))) {
+      if (!liveCheck) {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((r) => { setTimeout(r, 5000); }); // wait 5 seconds for sockets to startup
+      }
       liveCheck = orderBookService.checkOrderBooks();
       console.log('liveCheck: ');
       console.log(liveCheck);
-      if (liveCheck.deadSocketConnections > 0) {
+      if (liveCheck.unresponsiveOrderbookCount > 0) {
         live = false;
+        break; // stop checking for opportunities
       }
     }
     const opportunityBtc = arbEngine.findOpportunity(
@@ -109,6 +115,9 @@ const initCoinbase = async () => {
       subscribers.Coinbase.orderBooks['ETH-USD'],
       subscribers.ProtonDex.orderBooks.XETH_XMD,
     );
+
+    // TODO: use the executeOpportunities function to execute all opportunities
+    // without waiting for the previous one to finish
     if (opportunityEth) {
       // eslint-disable-next-line no-await-in-loop
       await arbEngine.executeOpportunity(opportunityEth);

@@ -59,15 +59,18 @@ class OrderBookService {
     const liveCheck = {
       unresponsive: [],
       deadSocketConnections: [],
-      liveCount: 0,
-      unresponsiveCount: 0,
-      totalCount: Object.keys(this.subscribers).length,
+      liveOrderbookCount: 0,
+      unresponsiveOrderbookCount: 0,
+      subscriberCount: Object.keys(this.subscribers).length,
+      orderBookCount: 0,
+      lastCheck: moment(),
     };
     Object.keys(this.subscribers).forEach(async (exchangeName) => {
       const sub = this.subscribers[exchangeName];
       Object.keys(sub.orderBooks).forEach((localSymbol) => {
+        liveCheck.orderBookCount += 1;
         if (sub.orderBooks[localSymbol].isLive()) {
-          liveCheck.liveCount += 1;
+          liveCheck.liveOrderbookCount += 1;
         } else {
           const { updatedAt } = sub.orderBooks[localSymbol];
           if (updatedAt && moment(updatedAt).isBefore(moment().subtract('10', 'minutes'))) {
@@ -75,8 +78,8 @@ class OrderBookService {
           }
           let lastUpdated = sub.orderBooks[localSymbol].updatedAt;
           lastUpdated = lastUpdated ? lastUpdated.toDate() : null;
-          liveCheck.unresponsiveCount += 1;
-          liveCheck.unresponsive.push({ name: `${exchangeName}-${localSymbol}`, lastUpdated });
+          liveCheck.unresponsiveOrderbookCount += 1;
+          liveCheck.unresponsiveOrderbookCount.push({ name: `${exchangeName}-${localSymbol}`, lastUpdated });
         }
       });
     });

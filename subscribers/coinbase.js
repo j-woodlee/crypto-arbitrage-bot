@@ -119,14 +119,11 @@ class CoinbaseSubscriber {
       product_ids: products,
     };
     const unsubMessage = this.timestampAndSign(message, channelName, products);
-    console.log('JSON.stringify(unsubMessage): ');
-    console.log(JSON.stringify(unsubMessage));
     this.ws.send(JSON.stringify(unsubMessage));
   }
 
   // eslint-disable-next-line class-methods-use-this
   addProducts(exchangeProducts) {
-    console.log('adding products');
     const newSymbols = [];
     exchangeProducts.forEach((ep) => {
       this.orderBooks[ep.localSymbol] = new OrderBook('Coinbase', ep.localSymbol);
