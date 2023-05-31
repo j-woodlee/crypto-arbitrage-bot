@@ -12,8 +12,6 @@ const FEE_SCHEDULE = {
   },
 };
 
-const ACCOUNT_SIZE_LIMIT = 10;
-
 class ArbitrageEngine {
   constructor(ccxtExchanges, accountBalances, logger) {
     this.ccxtExchanges = ccxtExchanges;
@@ -25,15 +23,15 @@ class ArbitrageEngine {
     const { trades } = opportunity;
     let canBuy = false;
     let canSell = false;
-    trades.forEach((trade) => {
+    trades.forEach((trade) => { // there are only 2 trades so this works
       if (trade.side === 'buy') { // need enough counter currency
         const balanceCounterCurrency = this.accountBalances[trade.exchangeName][trade.counterCurrency];
-        if (balanceCounterCurrency.value > trade.amountCounterCurrency) {
+        if (balanceCounterCurrency.value >= trade.amountCounterCurrency) {
           canBuy = true;
         }
       } else if (trade.side === 'sell') { // need enough base currency
         const balanceBaseCurrency = this.accountBalances[trade.exchangeName][trade.baseCurrency];
-        if (balanceBaseCurrency.value > trade.amount) {
+        if (balanceBaseCurrency.value >= trade.amount) {
           canSell = true;
         }
       }
@@ -44,25 +42,6 @@ class ArbitrageEngine {
   updateBalances(accountBalances) {
     this.accountBalances = accountBalances;
   }
-
-  // adjustBalancesAfterTrade(opportunity) {
-  //   const { trades } = opportunity;
-  //   trades.forEach((trade) => {
-  //     const balanceCounterCurrencyValue = this.accountBalances[trade.exchangeName][trade.counterCurrency].value;
-  //     const balanceBaseCurrencyValue = this.accountBalances[trade.exchangeName][trade.baseCurrency].value;
-  //     if (trade.side === 'buy') {
-  //       const balanceCounterCurrencyAdjusted = balanceCounterCurrencyValue - trade.amountCounterCurrency;
-  //       const balanceBaseCurrencyAdjusted = balanceBaseCurrencyValue + trade.amount;
-  //       this.accountBalances[trade.exchangeName][trade.baseCurrency].value = balanceBaseCurrencyAdjusted;
-  //       this.accountBalances[trade.exchangeName][trade.counterCurrency].value = balanceCounterCurrencyAdjusted;
-  //     } else if (trade.side === 'sell') {
-  //       const balanceCounterCurrencyAdjusted = balanceCounterCurrencyValue + trade.amountCounterCurrency;
-  //       const balanceBaseCurrencyAdjusted = balanceBaseCurrencyValue - trade.amount;
-  //       this.accountBalances[trade.exchangeName][trade.baseCurrency].value = balanceBaseCurrencyAdjusted;
-  //       this.accountBalances[trade.exchangeName][trade.counterCurrency].value = balanceCounterCurrencyAdjusted;
-  //     }
-  //   });
-  // }
 
   getAmountToBuy(lowestAsk, highestBid, askSymbol, bidSymbol, askExchange, bidExchange) {
     if (lowestAsk.qty <= highestBid.qty) {
@@ -100,14 +79,18 @@ class ArbitrageEngine {
       const opportunity = {};
       opportunity.lowestAsk2 = lowestAsk2;
       opportunity.highestBid1 = highestBid1;
-      // take the lowest of the two quantities
-      let amountToBuy = Math.min(lowestAsk2.qty, highestBid1.qty);
+      console.log('opportunity: ');
+      console.log(opportunity);
+      const amountToBuy = this.getAmountToBuy(
+        lowestAsk2,
+        highestBid1,
+        orderbook2.baseCurrency,
+        orderbook1.baseCurrency,
+        orderbook2.exchangeName,
+        orderbook1.exchangeName,
+      );
       const buyPrice = lowestAsk2.price;
       const sellPrice = highestBid1.price;
-      const amountCounterCurrencyBuy = buyPrice * amountToBuy;
-      if (amountCounterCurrencyBuy > ACCOUNT_SIZE_LIMIT) {
-        amountToBuy = ACCOUNT_SIZE_LIMIT / buyPrice; // base = counter / (counter / base)
-      }
       opportunity.trades = [{
         side: 'buy',
         amount: amountToBuy, // in base currency
@@ -143,14 +126,19 @@ class ArbitrageEngine {
       const opportunity = {};
       opportunity.lowestAsk1 = lowestAsk1;
       opportunity.highestBid2 = highestBid2;
+      console.log('opportunity: ');
+      console.log(opportunity);
       // take the lowest of the two quantities
-      let amountToBuy = Math.min(lowestAsk1.qty, highestBid2.qty);
+      const amountToBuy = this.getAmountToBuy(
+        lowestAsk1,
+        highestBid2,
+        orderbook1.baseCurrency,
+        orderbook2.baseCurrency,
+        orderbook1.exchangeName,
+        orderbook2.exchangeName,
+      );
       const buyPrice = lowestAsk1.price;
       const sellPrice = highestBid2.price;
-      const amountCounterCurrencyBuy = buyPrice * amountToBuy;
-      if (amountCounterCurrencyBuy > ACCOUNT_SIZE_LIMIT) { // limited by exchange balances
-        amountToBuy = ACCOUNT_SIZE_LIMIT / buyPrice; // base = counter / (counter / base)
-      }
       opportunity.trades = [{
         side: 'buy',
         amount: amountToBuy, // in base currency
