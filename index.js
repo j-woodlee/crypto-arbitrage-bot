@@ -45,8 +45,6 @@ const initCoinbase = async () => {
 };
 
 const getAccountBalances = async (ccxtExchanges) => {
-  // console.log('ccxtExchanges: ');
-  // console.log(ccxtExchanges);
   const accountBalances = {};
   await Promise.each(ccxtExchanges, async (exchange) => {
     const exchangeName = exchange.name;
@@ -62,6 +60,27 @@ const getAccountBalances = async (ccxtExchanges) => {
     }
   });
   return accountBalances;
+};
+
+const getAveragePurchasePrice = async (exchange, symbol) => {
+  const trades = await exchange.fetchMyTrades();
+
+  const buyTrades = trades.filter((trade) => {
+    const tradeTime = new Date(trade.info.trade_time);
+    const afterMayFirst2023 = tradeTime > new Date('2023-05-1');
+    return trade.info.product_id === symbol && trade.side === 'buy' && afterMayFirst2023;
+  });
+
+  let sumBaseProduct = 0;
+  let sumCounterProduct = 0;
+  buyTrades.forEach((trade) => {
+    const { amount, cost } = trade;
+    sumBaseProduct += amount;
+    sumCounterProduct += cost;
+  });
+
+  const averagePrice = sumCounterProduct / sumBaseProduct;
+  return averagePrice;
 };
 
 (async () => {
@@ -105,8 +124,6 @@ const getAccountBalances = async (ccxtExchanges) => {
     },
   ];
 
-  // TODO: get exchange balances at this point,
-  // use them going forward to prevent opportunities from executing
   const protonDex = await initProtonDex(logger);
   const coinbase = await initCoinbase();
   const accountBalances = await getAccountBalances([protonDex, coinbase]);
@@ -117,6 +134,15 @@ const getAccountBalances = async (ccxtExchanges) => {
   );
 
   console.log(accountBalances);
+
+  const averageBTCPurchasePrice = await getAveragePurchasePrice(coinbase, 'BTC-USD');
+  console.log('averageBTCPurchasePrice on coinbase: ');
+  console.log(averageBTCPurchasePrice);
+
+  const averageETHPurchasePrice = await getAveragePurchasePrice(coinbase, 'ETH-USD');
+
+  console.log('averageETHPurchasePrice on coinbase: ');
+  console.log(averageETHPurchasePrice);
 
   await orderBookService.start();
   const subscribers = orderBookService.getSubscribers();

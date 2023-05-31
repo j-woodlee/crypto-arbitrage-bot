@@ -64,13 +64,30 @@ class ArbitrageEngine {
   //   });
   // }
 
-  // getAmountToBuy(lowestAsk, highestBid, askSymbol, bidSymbol, askExchange, bidExchange) {
-  //   const initialAmount = Math.min(lowestAsk.qty, highestBid.qty);
-  //   const askBalance = this.accountBalances[askExchange][askSymbol].value;
-  //   const bidBalance = this.accountBalances[bidExchange][bidSymbol].value;
-  //   if (initialAmount > ) {
-  //   }
-  // }
+  getAmountToBuy(lowestAsk, highestBid, askSymbol, bidSymbol, askExchange, bidExchange) {
+    if (lowestAsk.qty <= highestBid.qty) {
+      const initialAmount = lowestAsk.qty;
+      const exchangeBalance = this.accountBalances[askExchange][askSymbol].value;
+      if (initialAmount < exchangeBalance) {
+        return initialAmount;
+      }
+
+      if (initialAmount >= exchangeBalance) {
+        return exchangeBalance;
+      }
+    } else if (lowestAsk.qty > highestBid.qty) {
+      const initialAmount = highestBid.qty;
+      const exchangeBalance = this.accountBalances[bidExchange][bidSymbol].value;
+      if (initialAmount < exchangeBalance) {
+        return initialAmount;
+      }
+
+      if (initialAmount >= exchangeBalance) {
+        return exchangeBalance;
+      }
+    }
+    throw new Error('cannot calculate amount to buy');
+  }
 
   findOpportunity(orderbook1, orderbook2) {
     const lowestAsk1 = orderbook1.asks.min();
