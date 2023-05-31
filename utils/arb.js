@@ -21,21 +21,32 @@ class ArbitrageEngine {
 
   checkFunds(opportunity) {
     const { trades } = opportunity;
-    let canBuy = false;
-    let canSell = false;
-    trades.forEach((trade) => { // there are only 2 trades so this works
+    let canBuy = true;
+    let canSell = true;
+    trades.forEach((trade) => {
       if (trade.side === 'buy') { // need enough counter currency
         const balanceCounterCurrency = this.accountBalances[trade.exchangeName][trade.counterCurrency];
-        if (balanceCounterCurrency.value >= trade.amountCounterCurrency) {
-          canBuy = true;
+        if (balanceCounterCurrency.value < trade.amountCounterCurrency) {
+          canBuy = false;
+        }
+
+        if (trade.amountCounterCurrency < 2) {
+          console.log('trade less than 2 buy');
+          canBuy = false;
         }
       } else if (trade.side === 'sell') { // need enough base currency
         const balanceBaseCurrency = this.accountBalances[trade.exchangeName][trade.baseCurrency];
-        if (balanceBaseCurrency.value >= trade.amount) {
-          canSell = true;
+        if (balanceBaseCurrency.value < trade.amount) {
+          canSell = false;
+        }
+
+        if (trade.amountCounterCurrency < 2) {
+          console.log('trade less than 2 sell');
+          canSell = false;
         }
       }
     });
+
     return canBuy && canSell;
   }
 
@@ -43,29 +54,25 @@ class ArbitrageEngine {
     this.accountBalances = accountBalances;
   }
 
-  getAmountToBuy(lowestAsk, highestBid, askSymbol, bidSymbol, askExchange, bidExchange) {
-    if (lowestAsk.qty <= highestBid.qty) {
-      const initialAmount = lowestAsk.qty;
-      const exchangeBalance = this.accountBalances[askExchange][askSymbol].value;
-      if (initialAmount < exchangeBalance) {
-        return initialAmount;
-      }
-
-      if (initialAmount >= exchangeBalance) {
-        return exchangeBalance;
-      }
-    } else if (lowestAsk.qty > highestBid.qty) {
-      const initialAmount = highestBid.qty;
-      const exchangeBalance = this.accountBalances[bidExchange][bidSymbol].value;
-      if (initialAmount < exchangeBalance) {
-        return initialAmount;
-      }
-
-      if (initialAmount >= exchangeBalance) {
-        return exchangeBalance;
-      }
-    }
-    throw new Error('cannot calculate amount to buy');
+  getAmountToBuy(lowestAsk, highestBid, askCounterCurrency, bidBaseCurrency, askExchange, bidExchange) {
+    // this function is basically a battle to see what the lowest value is
+    // the quantities that are battling:
+    // 1. lowestAsk.qty (base currency)
+    // 2. highestBid.qty (base currency)
+    // 4. ask exchange counter currency balance (the exchange where we are buying)
+    // 5. exchange2 base currency balance (the exchange where we are selling)
+    // lowestAsk.price is the price we will be buying the asset at
+    // highestBid.price is the price we will be selling the asset at
+    const askExchangeCounterCurrencyBalanceInBaseCurrency = this.accountBalances[askExchange][askCounterCurrency].value / lowestAsk.price; // base = counter / price
+    const bidExchangeBaseCurrencyBalance = this.accountBalances[bidExchange][bidBaseCurrency].value;
+    const smallestValue = Math.min(
+      lowestAsk.qty,
+      highestBid.qty,
+      askExchangeCounterCurrencyBalanceInBaseCurrency,
+      bidExchangeBaseCurrencyBalance,
+    );
+    // take 0.6% off just in case of exchange fees
+    return smallestValue - (smallestValue * 0.006); // smallestValue * 0.9994
   }
 
   findOpportunity(orderbook1, orderbook2) {
@@ -84,7 +91,7 @@ class ArbitrageEngine {
       const amountToBuy = this.getAmountToBuy(
         lowestAsk2,
         highestBid1,
-        orderbook2.baseCurrency,
+        orderbook2.counterCurrency,
         orderbook1.baseCurrency,
         orderbook2.exchangeName,
         orderbook1.exchangeName,
@@ -132,7 +139,7 @@ class ArbitrageEngine {
       const amountToBuy = this.getAmountToBuy(
         lowestAsk1,
         highestBid2,
-        orderbook1.baseCurrency,
+        orderbook1.counterCurrency,
         orderbook2.baseCurrency,
         orderbook1.exchangeName,
         orderbook2.exchangeName,
