@@ -174,6 +174,15 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       subscribers.Coinbase.orderBooks['BTC-USD'],
       subscribers.ProtonDex.orderBooks.XBTC_XMD,
     );
+
+    if (opportunityBtc) {
+      // eslint-disable-next-line no-await-in-loop
+      await arbEngine.executeOpportunity(opportunityBtc);
+      // eslint-disable-next-line no-await-in-loop
+      const balances = await getAccountBalances([protonDex, coinbase]);
+      arbEngine.updateBalances(balances);
+    }
+
     const opportunityEth = arbEngine.findOpportunity(
       subscribers.Coinbase.orderBooks['ETH-USD'],
       subscribers.ProtonDex.orderBooks.XETH_XMD,
@@ -184,11 +193,6 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
     if (opportunityEth) {
       // eslint-disable-next-line no-await-in-loop
       await arbEngine.executeOpportunity(opportunityEth);
-    }
-
-    if (opportunityBtc) {
-      // eslint-disable-next-line no-await-in-loop
-      await arbEngine.executeOpportunity(opportunityBtc);
     }
 
     logger.info('next checking for opportunities in 8 seconds...\n\n\n\n');

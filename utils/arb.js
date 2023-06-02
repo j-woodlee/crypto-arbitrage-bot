@@ -19,7 +19,7 @@ class ArbitrageEngine {
     this.logger = logger;
   }
 
-  checkFunds(opportunity) {
+  balanceBigEnough(opportunity) {
     const { trades } = opportunity;
     let canBuy = true;
     let canSell = true;
@@ -31,7 +31,6 @@ class ArbitrageEngine {
         }
 
         if (trade.amountCounterCurrency < 2) {
-          console.log('trade less than 2 buy');
           canBuy = false;
         }
       } else if (trade.side === 'sell') { // need enough base currency
@@ -41,13 +40,14 @@ class ArbitrageEngine {
         }
 
         if (trade.amountCounterCurrency < 2) {
-          console.log('trade less than 2 sell');
           canSell = false;
         }
       }
     });
 
-    return canBuy && canSell;
+    const balanceBigEnough = canBuy && canSell;
+    this.logger.info(`balanceBigEnough: ${balanceBigEnough}`);
+    return balanceBigEnough;
   }
 
   updateBalances(accountBalances) {
@@ -119,11 +119,9 @@ class ArbitrageEngine {
         counterCurrency: orderbook1.counterCurrency,
       }];
 
-      const balanceBigEnough = this.checkFunds(opportunity);
       this.logger.info(`${opportunity.trades[0].side} ${opportunity.trades[0].amount} ${opportunity.trades[0].symbol} at ${opportunity.trades[0].price} on ${opportunity.trades[0].exchangeName}, 
-                              ${opportunity.trades[1].side} ${opportunity.trades[1].amount} ${opportunity.trades[1].symbol} at ${opportunity.trades[1].price} on ${opportunity.trades[1].exchangeName}
-                              balanceBigEnough: ${balanceBigEnough}`);
-      if (balanceBigEnough && this.isOpportunityProfitable(opportunity)) {
+                              ${opportunity.trades[1].side} ${opportunity.trades[1].amount} ${opportunity.trades[1].symbol} at ${opportunity.trades[1].price} on ${opportunity.trades[1].exchangeName}`);
+      if (this.opportunityProfitable(opportunity) && this.balanceBigEnough(opportunity)) {
         return opportunity;
       }
     }
@@ -166,11 +164,10 @@ class ArbitrageEngine {
         baseCurrency: orderbook2.baseCurrency,
         counterCurrency: orderbook2.counterCurrency,
       }];
-      const balanceBigEnough = this.checkFunds(opportunity);
+
       this.logger.info(`${opportunity.trades[0].side} ${opportunity.trades[0].amount} ${opportunity.trades[0].symbol} at ${opportunity.trades[0].price} on ${opportunity.trades[0].exchangeName}, 
-                              ${opportunity.trades[1].side} ${opportunity.trades[1].amount} ${opportunity.trades[1].symbol} at ${opportunity.trades[1].price} on ${opportunity.trades[1].exchangeName}
-                              balanceBigEnough: ${balanceBigEnough}`);
-      if (balanceBigEnough && this.isOpportunityProfitable(opportunity)) {
+                              ${opportunity.trades[1].side} ${opportunity.trades[1].amount} ${opportunity.trades[1].symbol} at ${opportunity.trades[1].price} on ${opportunity.trades[1].exchangeName}`);
+      if (this.opportunityProfitable(opportunity) && this.balanceBigEnough(opportunity)) {
         return opportunity;
       }
     }
@@ -178,7 +175,7 @@ class ArbitrageEngine {
     return undefined;
   }
 
-  isOpportunityProfitable(opportunity) {
+  opportunityProfitable(opportunity) {
     if (opportunity.trades.length > 2) {
       return false; // only support 2 trades right now
     }
@@ -194,7 +191,7 @@ class ArbitrageEngine {
     );
 
     const profit = revenueInCounterCurrency - totalFeesInCounterCurrency;
-    this.logger.info(`profit: ${profit}`);
+    this.logger.info(`profit: ${profit} ${opportunity.trades[1].counterCurrency}`);
     if (profit > 0) {
       return true;
     }
