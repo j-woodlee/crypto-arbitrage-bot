@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 const { default: Logger } = require('@metalpay/metal-nebula-logger');
 const { default: ccxt } = require('@metalpay/metal-ccxt-lib');
 const moment = require('moment');
@@ -105,6 +106,15 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       counterCurrency: 'USD',
     },
     {
+      exchangeName: 'Coinbase',
+      localSymbol: 'MTL-USD',
+      product: {
+        counterProductPrecision: 6,
+      },
+      baseCurrency: 'MTL',
+      counterCurrency: 'USD',
+    },
+    {
       exchangeName: 'ProtonDex',
       localSymbol: 'XBTC_XMD',
       product: {
@@ -120,6 +130,15 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
         counterProductPrecision: 6,
       },
       baseCurrency: 'XETH',
+      counterCurrency: 'XMD',
+    },
+    {
+      exchangeName: 'ProtonDex',
+      localSymbol: 'XMT_XMD',
+      product: {
+        counterProductPrecision: 6,
+      },
+      baseCurrency: 'XMT',
       counterCurrency: 'XMD',
     },
   ];
@@ -176,9 +195,7 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
     );
 
     if (opportunityBtc) {
-      // eslint-disable-next-line no-await-in-loop
       await arbEngine.executeOpportunity(opportunityBtc);
-      // eslint-disable-next-line no-await-in-loop
       const balances = await getAccountBalances([protonDex, coinbase]);
       arbEngine.updateBalances(balances);
     }
@@ -191,8 +208,18 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
     // TODO: use the executeOpportunities function to execute all opportunities
     // without waiting for the previous one to finish
     if (opportunityEth) {
-      // eslint-disable-next-line no-await-in-loop
       await arbEngine.executeOpportunity(opportunityEth);
+      const balances = await getAccountBalances([protonDex, coinbase]);
+      arbEngine.updateBalances(balances);
+    }
+
+    const opportunityMtl = arbEngine.findOpportunity(
+      subscribers.Coinbase.orderBooks['MTL-USD'],
+      subscribers.ProtonDex.orderBooks.XMT_XMD,
+    );
+
+    if (opportunityMtl) {
+      await arbEngine.executeOpportunity(opportunityMtl);
     }
 
     logger.info('next checking for opportunities in 8 seconds...\n\n\n\n');
