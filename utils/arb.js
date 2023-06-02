@@ -182,7 +182,7 @@ class ArbitrageEngine {
     let totalFeesInCounterCurrency = 0;
     opportunity.trades.forEach((trade) => {
       const feeInCounterCurrency = trade.amountCounterCurrency
-        * FEE_SCHEDULE[trade.exchangeName].maker;
+        * FEE_SCHEDULE[trade.exchangeName].taker;
       totalFeesInCounterCurrency += feeInCounterCurrency;
     });
 
