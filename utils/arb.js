@@ -192,7 +192,7 @@ class ArbitrageEngine {
 
     const profit = revenueInCounterCurrency - totalFeesInCounterCurrency;
     this.logger.info(`profit: ${profit} ${opportunity.trades[1].counterCurrency}`);
-    if (profit > 0) {
+    if (profit > 0.000001) {
       return true;
     }
 
