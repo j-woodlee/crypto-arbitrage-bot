@@ -198,9 +198,9 @@ class ArbitrageEngine {
       opportunity.trades[0].amountCounterCurrency - opportunity.trades[1].amountCounterCurrency,
     );
 
-    const profit = revenueInCounterCurrency - totalFeesInCounterCurrency;
+    const profit = toFixedNumber(revenueInCounterCurrency - totalFeesInCounterCurrency, 8, 10); // round to 8 decimals, base 10
     this.logger.info(`profit: ${profit} ${opportunity.trades[1].counterCurrency}`);
-    if (profit > 0.000001) {
+    if (profit > 0.00000001) {
       return true;
     }
 
