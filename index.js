@@ -105,15 +105,15 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       baseCurrency: 'ETH',
       counterCurrency: 'USD',
     },
-    {
-      exchangeName: 'Coinbase',
-      localSymbol: 'MTL-USD',
-      product: {
-        counterProductPrecision: 6,
-      },
-      baseCurrency: 'MTL',
-      counterCurrency: 'USD',
-    },
+    // {
+    //   exchangeName: 'Coinbase',
+    //   localSymbol: 'MTL-USD',
+    //   product: {
+    //     counterProductPrecision: 6,
+    //   },
+    //   baseCurrency: 'MTL',
+    //   counterCurrency: 'USD',
+    // },
     {
       exchangeName: 'ProtonDex',
       localSymbol: 'XBTC_XMD',
@@ -132,15 +132,15 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       baseCurrency: 'XETH',
       counterCurrency: 'XMD',
     },
-    {
-      exchangeName: 'ProtonDex',
-      localSymbol: 'XMT_XMD',
-      product: {
-        counterProductPrecision: 6,
-      },
-      baseCurrency: 'XMT',
-      counterCurrency: 'XMD',
-    },
+    // {
+    //   exchangeName: 'ProtonDex',
+    //   localSymbol: 'XMT_XMD',
+    //   product: {
+    //     counterProductPrecision: 6,
+    //   },
+    //   baseCurrency: 'XMT',
+    //   counterCurrency: 'XMD',
+    // },
   ];
 
   const protonDex = await initProtonDex(logger);
@@ -213,14 +213,14 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       arbEngine.updateBalances(balances);
     }
 
-    const opportunityMtl = arbEngine.findOpportunity(
-      subscribers.Coinbase.orderBooks['MTL-USD'],
-      subscribers.ProtonDex.orderBooks.XMT_XMD,
-    );
+    // const opportunityMtl = arbEngine.findOpportunity(
+    //   subscribers.Coinbase.orderBooks['MTL-USD'],
+    //   subscribers.ProtonDex.orderBooks.XMT_XMD,
+    // );
 
-    if (opportunityMtl) {
-      await arbEngine.executeOpportunity(opportunityMtl);
-    }
+    // if (opportunityMtl) {
+    //   await arbEngine.executeOpportunity(opportunityMtl);
+    // }
 
     logger.info('next checking for opportunities in 8 seconds...\n\n\n\n');
 

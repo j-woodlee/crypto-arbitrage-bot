@@ -12,6 +12,11 @@ const FEE_SCHEDULE = {
   },
 };
 
+const toFixedNumber = (num, digits, base) => {
+  const pow = (base ?? 10) ** digits;
+  return Math.round(num * pow) / pow;
+};
+
 class ArbitrageEngine {
   constructor(ccxtExchanges, accountBalances, logger) {
     this.ccxtExchanges = ccxtExchanges;
@@ -96,13 +101,15 @@ class ArbitrageEngine {
         orderbook2.exchangeName,
         orderbook1.exchangeName,
       );
+
+      const amountToBuyRounded = toFixedNumber(amountToBuy, 8, 10); // round to 8 decimal places, base 10
       const buyPrice = lowestAsk2.price;
       const sellPrice = highestBid1.price;
       opportunity.trades = [{
         side: 'buy',
-        amount: amountToBuy, // in base currency
+        amount: amountToBuyRounded, // in base currency
         price: buyPrice,
-        amountCounterCurrency: buyPrice * amountToBuy,
+        amountCounterCurrency: buyPrice * amountToBuyRounded,
         exchangeName: orderbook2.exchangeName,
         symbol: orderbook2.symbol,
         baseCurrency: orderbook2.baseCurrency,
@@ -110,9 +117,9 @@ class ArbitrageEngine {
       },
       {
         side: 'sell',
-        amount: amountToBuy,
+        amount: amountToBuyRounded,
         price: sellPrice,
-        amountCounterCurrency: sellPrice * amountToBuy,
+        amountCounterCurrency: sellPrice * amountToBuyRounded,
         exchangeName: orderbook1.exchangeName,
         symbol: orderbook1.symbol,
         baseCurrency: orderbook1.baseCurrency,
@@ -142,13 +149,14 @@ class ArbitrageEngine {
         orderbook1.exchangeName,
         orderbook2.exchangeName,
       );
+      const amountToBuyRounded = toFixedNumber(amountToBuy, 8, 10); // round to 8 decimal places, base 10
       const buyPrice = lowestAsk1.price;
       const sellPrice = highestBid2.price;
       opportunity.trades = [{
         side: 'buy',
-        amount: amountToBuy, // in base currency
+        amount: amountToBuyRounded, // in base currency
         price: buyPrice,
-        amountCounterCurrency: buyPrice * amountToBuy,
+        amountCounterCurrency: buyPrice * amountToBuyRounded,
         exchangeName: orderbook1.exchangeName,
         symbol: orderbook1.symbol,
         baseCurrency: orderbook1.baseCurrency,
@@ -156,9 +164,9 @@ class ArbitrageEngine {
       },
       {
         side: 'sell',
-        amount: amountToBuy,
+        amount: amountToBuyRounded,
         price: sellPrice,
-        amountCounterCurrency: sellPrice * amountToBuy,
+        amountCounterCurrency: sellPrice * amountToBuyRounded,
         exchangeName: orderbook2.exchangeName,
         symbol: orderbook2.symbol,
         baseCurrency: orderbook2.baseCurrency,
