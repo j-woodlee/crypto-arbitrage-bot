@@ -21,6 +21,8 @@ const chainUrlsProd = [
 //   'https://test.proton.eosusa.news',
 // ];
 
+const TIME_DELAY_SECONDS = 3;
+
 const initProtonDex = async (logger) => {
   const protonDex = new ccxt.ProtonDexV2({
     privateKey: secrets.protonDexMainnetPrivateKey,
@@ -50,13 +52,21 @@ const getAccountBalances = async (ccxtExchanges) => {
   await Promise.each(ccxtExchanges, async (exchange) => {
     const exchangeName = exchange.name;
     accountBalances[exchangeName] = {};
-    const accounts = await exchange.fetchAccounts();
+    // const accounts = await exchange.fetchAccounts();
+
+    const balances = await exchange.fetchBalance();
+    delete balances.info;
+    delete balances.free;
+    delete balances.total;
+    delete balances.used;
+
+    const balancesSymbols = Object.keys(balances);
     // eslint-disable-next-line no-restricted-syntax
-    for (const account of accounts) {
-      if (account.type === 'wallet') {
-        const balance = account.info.available_balance;
-        balance.value = parseFloat(balance.value);
-        accountBalances[exchangeName][account.code] = balance;
+    for (const symbol of balancesSymbols) {
+      if (['XMD', 'USD', 'ETH', 'XETH', 'XBTC', 'BTC', 'XMT', 'MTL'].includes(symbol)) {
+        const balance = {};
+        balance.value = parseFloat(balances[symbol].free);
+        accountBalances[exchangeName][symbol] = balance;
       }
     }
   });
@@ -105,15 +115,15 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       baseCurrency: 'ETH',
       counterCurrency: 'USD',
     },
-    // {
-    //   exchangeName: 'Coinbase',
-    //   localSymbol: 'MTL-USD',
-    //   product: {
-    //     counterProductPrecision: 6,
-    //   },
-    //   baseCurrency: 'MTL',
-    //   counterCurrency: 'USD',
-    // },
+    {
+      exchangeName: 'Coinbase',
+      localSymbol: 'MTL-USD',
+      product: {
+        counterProductPrecision: 6,
+      },
+      baseCurrency: 'MTL',
+      counterCurrency: 'USD',
+    },
     {
       exchangeName: 'ProtonDex',
       localSymbol: 'XBTC_XMD',
@@ -132,15 +142,15 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       baseCurrency: 'XETH',
       counterCurrency: 'XMD',
     },
-    // {
-    //   exchangeName: 'ProtonDex',
-    //   localSymbol: 'XMT_XMD',
-    //   product: {
-    //     counterProductPrecision: 6,
-    //   },
-    //   baseCurrency: 'XMT',
-    //   counterCurrency: 'XMD',
-    // },
+    {
+      exchangeName: 'ProtonDex',
+      localSymbol: 'XMT_XMD',
+      product: {
+        counterProductPrecision: 6,
+      },
+      baseCurrency: 'XMT',
+      counterCurrency: 'XMD',
+    },
   ];
 
   const protonDex = await initProtonDex(logger);
@@ -213,19 +223,19 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       arbEngine.updateBalances(balances);
     }
 
-    // const opportunityMtl = arbEngine.findOpportunity(
-    //   subscribers.Coinbase.orderBooks['MTL-USD'],
-    //   subscribers.ProtonDex.orderBooks.XMT_XMD,
-    // );
+    const opportunityMtl = arbEngine.findOpportunity(
+      subscribers.Coinbase.orderBooks['MTL-USD'],
+      subscribers.ProtonDex.orderBooks.XMT_XMD,
+    );
 
-    // if (opportunityMtl) {
-    //   await arbEngine.executeOpportunity(opportunityMtl);
-    // }
+    if (opportunityMtl) {
+      await arbEngine.executeOpportunity(opportunityMtl);
+    }
 
-    logger.info('next checking for opportunities in 8 seconds...\n\n\n\n');
+    logger.info(`next checking for opportunities in ${TIME_DELAY_SECONDS} seconds...\n\n\n\n`);
 
     // eslint-disable-next-line no-await-in-loop
-    await new Promise((r) => { setTimeout(r, 8000); });
+    await new Promise((r) => { setTimeout(r, TIME_DELAY_SECONDS * 1000); });
     // eslint-disable-next-line no-await-in-loop
     const balances = await getAccountBalances([protonDex, coinbase]);
     arbEngine.updateBalances(balances);
