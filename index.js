@@ -21,7 +21,7 @@ const chainUrlsProd = [
 //   'https://test.proton.eosusa.news',
 // ];
 
-const TIME_DELAY_SECONDS = 5;
+const TIME_DELAY_SECONDS = 6;
 
 const initProtonDex = async (logger) => {
   const protonDex = new ccxt.ProtonDexV2({
@@ -47,26 +47,45 @@ const initCoinbase = async () => {
   return coinbase;
 };
 
+// const getAccountBalances = async (ccxtExchanges) => {
+//   const accountBalances = {};
+//   await Promise.each(ccxtExchanges, async (exchange) => {
+//     const exchangeName = exchange.name;
+//     accountBalances[exchangeName] = {};
+//     const accounts = await exchange.fetchAccounts();
+//     console.log(accounts);
+
+//     const balances = await exchange.fetchBalance();
+//     delete balances.info;
+//     delete balances.free;
+//     delete balances.total;
+//     delete balances.used;
+
+//     const balancesSymbols = Object.keys(balances);
+//     // eslint-disable-next-line no-restricted-syntax
+//     for (const symbol of balancesSymbols) {
+//       if (['XMD', 'USD', 'ETH', 'XETH', 'XBTC', 'BTC', 'XMT', 'MTL'].includes(symbol)) {
+//         const balance = {};
+//         balance.value = parseFloat(balances[symbol].free);
+//         accountBalances[exchangeName][symbol] = balance;
+//       }
+//     }
+//   });
+//   return accountBalances;
+// };
+
 const getAccountBalances = async (ccxtExchanges) => {
   const accountBalances = {};
   await Promise.each(ccxtExchanges, async (exchange) => {
     const exchangeName = exchange.name;
     accountBalances[exchangeName] = {};
-    // const accounts = await exchange.fetchAccounts();
-
-    const balances = await exchange.fetchBalance();
-    delete balances.info;
-    delete balances.free;
-    delete balances.total;
-    delete balances.used;
-
-    const balancesSymbols = Object.keys(balances);
+    const accounts = await exchange.fetchAccounts();
     // eslint-disable-next-line no-restricted-syntax
-    for (const symbol of balancesSymbols) {
-      if (['XMD', 'USD', 'ETH', 'XETH', 'XBTC', 'BTC', 'XMT', 'MTL'].includes(symbol)) {
-        const balance = {};
-        balance.value = parseFloat(balances[symbol].free);
-        accountBalances[exchangeName][symbol] = balance;
+    for (const account of accounts) {
+      if (account.type === 'wallet') {
+        const balance = account.info.available_balance;
+        balance.value = parseFloat(balance.value);
+        accountBalances[exchangeName][account.code] = balance;
       }
     }
   });
