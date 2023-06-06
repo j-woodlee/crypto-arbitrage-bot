@@ -186,7 +186,7 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
   let liveCheck = null;
   let live = true;
   while (live) {
-    if (!liveCheck || moment(liveCheck.lastCheck).isBefore(moment().subtract('5', 'minutes'))) {
+    if (!liveCheck || moment(liveCheck.lastCheck).isBefore(moment().subtract('3', 'minutes'))) {
       if (!liveCheck) {
         // eslint-disable-next-line no-await-in-loop
         await new Promise((r) => { setTimeout(r, 5000); }); // wait 5 seconds for sockets to startup
@@ -196,7 +196,7 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       console.log(liveCheck);
       if (liveCheck.unresponsiveOrderbookCount > 0) {
         live = false;
-        break; // stop checking for opportunities
+        throw new Error('at least one orderbook is unresponsive');
       }
     }
     const opportunityBtc = arbEngine.findOpportunity(
