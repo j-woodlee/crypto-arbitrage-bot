@@ -68,7 +68,7 @@ class CoinbaseSubscriber {
               }
             });
             this.orderBooks[event.product_id].init(bids, asks);
-            this.logger.info(`Coinbase: ${event.product_id} Initialized Orderbook`);
+            // this.logger.info(`Coinbase: ${event.product_id} Initialized Orderbook`);
           } else if (event.type === 'update') {
             event.updates.forEach((update) => {
               if (update.side === 'bid') {
@@ -89,17 +89,17 @@ class CoinbaseSubscriber {
     });
 
     this.ws.on('open', async () => {
-      this.logger.info('Coinbase: Opened');
+      // logger.info('Coinbase: Opened');
+      console.log('Coinbase: Opened');
       this.subscribeToProducts(this.exchangeProductSymbols, CHANNEL_NAMES.level2);
     });
 
     this.ws.on('error', async () => {
-      this.logger.error('Coinbase websocket error');
       this.restart();
     });
 
     this.ws.on('close', () => {
-      this.logger.warn('Coinbase websocket closed');
+      console.log('Coinbase websocket closed');
       this.restart();
     });
   }
