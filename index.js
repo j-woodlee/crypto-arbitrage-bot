@@ -21,7 +21,7 @@ const chainUrlsProd = [
 //   'https://test.proton.eosusa.news',
 // ];
 
-const TIME_DELAY_SECONDS = 3;
+const TIME_DELAY_SECONDS = 5;
 
 const initProtonDex = async (logger) => {
   const protonDex = new ccxt.ProtonDexV2({
