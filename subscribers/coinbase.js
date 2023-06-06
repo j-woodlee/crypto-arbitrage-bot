@@ -93,8 +93,14 @@ class CoinbaseSubscriber {
       this.subscribeToProducts(this.exchangeProductSymbols, CHANNEL_NAMES.level2);
     });
 
+    this.ws.on('error', async () => {
+      this.logger.error('Coinbase websocket error');
+      this.restart();
+    });
+
     this.ws.on('close', () => {
       this.logger.warn('Coinbase websocket closed');
+      this.restart();
     });
   }
 
