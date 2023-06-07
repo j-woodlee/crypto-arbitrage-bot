@@ -102,7 +102,9 @@ class ArbitrageEngine {
         orderbook1.exchangeName,
       );
 
-      const amountToBuyRounded = toFixedNumber(amountToBuy, 8, 10); // round to 8 decimal places, base 10
+      const smallestPrecision = Math.min(orderbook1.precision, orderbook2.precision);
+
+      const amountToBuyRounded = toFixedNumber(amountToBuy, smallestPrecision, 10); // round to least precision decimal places, base 10
       const buyPrice = lowestAsk2.price;
       const sellPrice = highestBid1.price;
       opportunity.trades = [{
@@ -149,7 +151,10 @@ class ArbitrageEngine {
         orderbook1.exchangeName,
         orderbook2.exchangeName,
       );
-      const amountToBuyRounded = toFixedNumber(amountToBuy, 8, 10); // round to 8 decimal places, base 10
+
+      const smallestPrecision = Math.min(orderbook1.precision, orderbook2.precision);
+
+      const amountToBuyRounded = toFixedNumber(amountToBuy, smallestPrecision, 10); // round to smallestPrecision decimal places, base 10
       const buyPrice = lowestAsk1.price;
       const sellPrice = highestBid2.price;
       opportunity.trades = [{

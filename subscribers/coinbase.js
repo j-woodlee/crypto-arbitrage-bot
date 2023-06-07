@@ -20,7 +20,13 @@ class CoinbaseSubscriber {
     this.exchangeProductSymbols = [];
     this.orderBooks = {};
     exchangeProducts.forEach((ep) => {
-      this.orderBooks[ep.localSymbol] = new OrderBook('Coinbase', ep.localSymbol, ep.baseCurrency, ep.counterCurrency);
+      this.orderBooks[ep.localSymbol] = new OrderBook(
+        'Coinbase',
+        ep.localSymbol,
+        ep.baseCurrency,
+        ep.counterCurrency,
+        ep.precision,
+      );
       this.exchangeProductSymbols.push(ep.localSymbol);
     });
   }
@@ -132,7 +138,13 @@ class CoinbaseSubscriber {
   addProducts(exchangeProducts) {
     const newSymbols = [];
     exchangeProducts.forEach((ep) => {
-      this.orderBooks[ep.localSymbol] = new OrderBook('Coinbase', ep.localSymbol, ep.baseCurrency, ep.counterCurrency);
+      this.orderBooks[ep.localSymbol] = new OrderBook(
+        'Coinbase',
+        ep.localSymbol,
+        ep.baseCurrency,
+        ep.counterCurrency,
+        ep.precision,
+      );
       this.exchangeProductSymbols.push(ep.localSymbol);
       newSymbols.push(ep.localSymbol);
     });

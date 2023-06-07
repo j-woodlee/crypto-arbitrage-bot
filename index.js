@@ -92,26 +92,31 @@ const getAccountBalances = async (ccxtExchanges) => {
   return accountBalances;
 };
 
-const getAveragePurchasePrice = async (exchange, symbol) => {
-  const trades = await exchange.fetchMyTrades();
+// const getAveragePurchasePrice = async (exchange, symbol) => {
+//   const trades = await exchange.fetchMyTrades();
 
-  const buyTrades = trades.filter((trade) => {
-    const tradeTime = new Date(trade.info.trade_time);
-    const afterMayFirst2023 = tradeTime > new Date('2023-05-1');
-    return trade.info.product_id === symbol && trade.side === 'buy' && afterMayFirst2023;
-  });
+//   const buyTrades = trades.filter((trade) => {
+//     const tradeTime = new Date(trade.info.trade_time);
+//     const afterMayFirst2023 = tradeTime > new Date('2023-05-1');
+//     return trade.info.product_id === symbol && trade.side === 'buy' && afterMayFirst2023;
+//   });
 
-  let sumBaseProduct = 0;
-  let sumCounterProduct = 0;
-  buyTrades.forEach((trade) => {
-    const { amount, cost } = trade;
-    sumBaseProduct += amount;
-    sumCounterProduct += cost;
-  });
+//   let sumBaseProduct = 0;
+//   let sumCounterProduct = 0;
+//   buyTrades.forEach((trade) => {
+//     const { amount, cost } = trade;
+//     if (Number.isNaN(amount) || Number.isNaN(cost)) {
+//       return;
+//     }
+//     console.log('amount: ');
+//     console.log(amount);
+//     sumBaseProduct += amount;
+//     sumCounterProduct += cost;
+//   });
 
-  const averagePrice = sumCounterProduct / sumBaseProduct;
-  return averagePrice;
-};
+//   const averagePrice = sumCounterProduct / sumBaseProduct;
+//   return averagePrice;
+// };
 
 (async () => {
   const logger = Logger('arb bot');
@@ -189,14 +194,14 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
 
   console.log(accountBalances);
 
-  const averageBTCPurchasePrice = await getAveragePurchasePrice(coinbase, 'BTC-USD');
-  console.log('averageBTCPurchasePrice on coinbase: ');
-  console.log(averageBTCPurchasePrice);
+  // const averageBTCPurchasePrice = await getAveragePurchasePrice(coinbase, 'BTC-USD');
+  // console.log('averageBTCPurchasePrice on coinbase: ');
+  // console.log(averageBTCPurchasePrice);
 
-  const averageETHPurchasePrice = await getAveragePurchasePrice(coinbase, 'ETH-USD');
+  // const averageETHPurchasePrice = await getAveragePurchasePrice(coinbase, 'ETH-USD');
 
-  console.log('averageETHPurchasePrice on coinbase: ');
-  console.log(averageETHPurchasePrice);
+  // console.log('averageETHPurchasePrice on coinbase: ');
+  // console.log(averageETHPurchasePrice);
 
   await orderBookService.start();
   const subscribers = orderBookService.getSubscribers();
