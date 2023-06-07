@@ -124,6 +124,7 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       },
       baseCurrency: 'BTC',
       counterCurrency: 'USD',
+      precision: 8,
     },
     {
       exchangeName: 'Coinbase',
@@ -133,6 +134,7 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       },
       baseCurrency: 'ETH',
       counterCurrency: 'USD',
+      precision: 7,
     },
     {
       exchangeName: 'Coinbase',
@@ -142,6 +144,7 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       },
       baseCurrency: 'MTL',
       counterCurrency: 'USD',
+      precision: 2,
     },
     {
       exchangeName: 'ProtonDex',
@@ -151,6 +154,7 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       },
       baseCurrency: 'XBTC',
       counterCurrency: 'XMD',
+      precision: 8,
     },
     {
       exchangeName: 'ProtonDex',
@@ -160,6 +164,7 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       },
       baseCurrency: 'XETH',
       counterCurrency: 'XMD',
+      precision: 8,
     },
     {
       exchangeName: 'ProtonDex',
@@ -169,6 +174,7 @@ const getAveragePurchasePrice = async (exchange, symbol) => {
       },
       baseCurrency: 'XMT',
       counterCurrency: 'XMD',
+      precision: 8,
     },
   ];
 
