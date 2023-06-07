@@ -141,16 +141,16 @@ const getAccountBalances = async (ccxtExchanges) => {
       counterCurrency: 'USD',
       precision: 7,
     },
-    {
-      exchangeName: 'Coinbase',
-      localSymbol: 'MTL-USD',
-      product: {
-        counterProductPrecision: 6,
-      },
-      baseCurrency: 'MTL',
-      counterCurrency: 'USD',
-      precision: 2,
-    },
+    // {
+    //   exchangeName: 'Coinbase',
+    //   localSymbol: 'MTL-USD',
+    //   product: {
+    //     counterProductPrecision: 6,
+    //   },
+    //   baseCurrency: 'MTL',
+    //   counterCurrency: 'USD',
+    //   precision: 2,
+    // },
     {
       exchangeName: 'ProtonDex',
       localSymbol: 'XBTC_XMD',
@@ -171,16 +171,16 @@ const getAccountBalances = async (ccxtExchanges) => {
       counterCurrency: 'XMD',
       precision: 8,
     },
-    {
-      exchangeName: 'ProtonDex',
-      localSymbol: 'XMT_XMD',
-      product: {
-        counterProductPrecision: 6,
-      },
-      baseCurrency: 'XMT',
-      counterCurrency: 'XMD',
-      precision: 8,
-    },
+    // {
+    //   exchangeName: 'ProtonDex',
+    //   localSymbol: 'XMT_XMD',
+    //   product: {
+    //     counterProductPrecision: 6,
+    //   },
+    //   baseCurrency: 'XMT',
+    //   counterCurrency: 'XMD',
+    //   precision: 8,
+    // },
   ];
 
   const protonDex = await initProtonDex(logger);
@@ -249,18 +249,18 @@ const getAccountBalances = async (ccxtExchanges) => {
     // without waiting for the previous one to finish
     if (opportunityEth) {
       await arbEngine.executeOpportunity(opportunityEth);
-      const balances = await getAccountBalances([protonDex, coinbase]);
-      arbEngine.updateBalances(balances);
+      // const balances = await getAccountBalances([protonDex, coinbase]);
+      // arbEngine.updateBalances(balances);
     }
 
-    const opportunityMtl = arbEngine.findOpportunity(
-      subscribers.Coinbase.orderBooks['MTL-USD'],
-      subscribers.ProtonDex.orderBooks.XMT_XMD,
-    );
+    // const opportunityMtl = arbEngine.findOpportunity(
+    //   subscribers.Coinbase.orderBooks['MTL-USD'],
+    //   subscribers.ProtonDex.orderBooks.XMT_XMD,
+    // );
 
-    if (opportunityMtl) {
-      await arbEngine.executeOpportunity(opportunityMtl);
-    }
+    // if (opportunityMtl) {
+    //   await arbEngine.executeOpportunity(opportunityMtl);
+    // }
 
     logger.info(`next checking for opportunities in ${TIME_DELAY_SECONDS} seconds...\n\n\n\n`);
 

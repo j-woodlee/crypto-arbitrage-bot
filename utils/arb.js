@@ -4,7 +4,7 @@ const Promise = require('bluebird');
 const FEE_SCHEDULE = {
   Coinbase: {
     maker: 0.006,
-    taker: 0.006,
+    taker: 0.004,
   },
   ProtonDex: {
     maker: 0.001,
