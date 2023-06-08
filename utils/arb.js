@@ -128,6 +128,8 @@ class ArbitrageEngine {
         counterCurrency: orderbook1.counterCurrency,
       }];
 
+      opportunity.precision = smallestPrecision;
+
       this.logger.info(`${opportunity.trades[0].side} ${opportunity.trades[0].amount} ${opportunity.trades[0].symbol} at ${opportunity.trades[0].price} on ${opportunity.trades[0].exchangeName}, 
                               ${opportunity.trades[1].side} ${opportunity.trades[1].amount} ${opportunity.trades[1].symbol} at ${opportunity.trades[1].price} on ${opportunity.trades[1].exchangeName}`);
       if (this.opportunityProfitable(opportunity) && this.balanceBigEnough(opportunity)) {
@@ -178,6 +180,8 @@ class ArbitrageEngine {
         counterCurrency: orderbook2.counterCurrency,
       }];
 
+      opportunity.precision = smallestPrecision;
+
       this.logger.info(`${opportunity.trades[0].side} ${opportunity.trades[0].amount} ${opportunity.trades[0].symbol} at ${opportunity.trades[0].price} on ${opportunity.trades[0].exchangeName}, 
                               ${opportunity.trades[1].side} ${opportunity.trades[1].amount} ${opportunity.trades[1].symbol} at ${opportunity.trades[1].price} on ${opportunity.trades[1].exchangeName}`);
       if (this.opportunityProfitable(opportunity) && this.balanceBigEnough(opportunity)) {
@@ -203,7 +207,7 @@ class ArbitrageEngine {
       opportunity.trades[0].amountCounterCurrency - opportunity.trades[1].amountCounterCurrency,
     );
 
-    const profit = toFixedNumber(revenueInCounterCurrency - totalFeesInCounterCurrency, 8, 10); // round to 8 decimals, base 10
+    const profit = toFixedNumber(revenueInCounterCurrency - totalFeesInCounterCurrency, opportunity.precision, 10); // round to the opportunity's precision, base 10
     this.logger.info(`profit: ${profit} ${opportunity.trades[1].counterCurrency}`);
     if (profit > 0.00000001) {
       return true;
