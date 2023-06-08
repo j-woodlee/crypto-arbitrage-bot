@@ -33,8 +33,8 @@ class CoinbaseSubscriber {
 
   restart() {
     this.ws.close();
-    this.logger.info('Coinbase: RESTART in 5 seconds...');
-    setTimeout(this.start, 5000);
+    this.logger.info('Coinbase: RESTART in 2 seconds...');
+    setTimeout(this.start, 2000);
   }
 
   // Function to generate a signature using CryptoJS
@@ -94,20 +94,25 @@ class CoinbaseSubscriber {
       }
     });
 
-    this.ws.on('open', async () => {
-      // logger.info('Coinbase: Opened');
-      console.log('Coinbase: Opened');
-      this.subscribeToProducts(this.exchangeProductSymbols, CHANNEL_NAMES.level2);
-    });
+    this.ws.on('open', this.wsOnOpen.bind(this));
 
-    this.ws.on('error', async () => {
-      this.restart();
-    });
+    this.ws.on('error', this.wsOnErr.bind(this));
 
-    this.ws.on('close', () => {
-      console.log('Coinbase websocket closed');
-      this.restart();
-    });
+    this.ws.on('close', this.wsOnClose.bind(this));
+  }
+
+  wsOnErr() {
+    this.restart();
+  }
+
+  wsOnOpen() {
+    this.logger.info('Coinbase: Opened');
+    this.subscribeToProducts(this.exchangeProductSymbols, CHANNEL_NAMES.level2);
+  }
+
+  wsOnClose() {
+    this.logger.warn('Coinbase websocket closed');
+    this.restart();
   }
 
   subscribeToProducts(products, channelName) {
