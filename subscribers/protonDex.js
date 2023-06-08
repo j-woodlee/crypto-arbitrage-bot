@@ -5,6 +5,8 @@ const { OrderBook } = require('../utils');
 // const protonDexEndpoint = 'metallicus-dbapi-dev01.binfra.one'; // testnet
 const protonDexEndpoint = 'metal-dexdb.global.binfra.one'; // mainnet
 
+const UPDATE_INTERVAL_SECONDS = 2;
+
 class ProtonDexSubscriber {
   constructor(exchangeProducts, logger) {
     this.exchangeProducts = exchangeProducts;
@@ -51,7 +53,7 @@ class ProtonDexSubscriber {
       await this.initOrderbook(ep);
       this.intervalIds.push(setInterval(async () => {
         await this.initOrderbook(ep);
-      }, 5000));
+      }, UPDATE_INTERVAL_SECONDS * 1000));
     });
     this.logger.info('ProtonDex: Initialized Orderbook');
   }
