@@ -6,7 +6,7 @@ const { OrderBook } = require('../utils');
 // const protonDexEndpoint = 'metallicus-dbapi-dev01.binfra.one'; // testnet
 const protonDexEndpoint = 'metal-dexdb.global.binfra.one'; // mainnet
 
-const ORDERBOOK_UPDATE_INTERVAL_MS = 3000;
+const ORDERBOOK_UPDATE_INTERVAL_MS = 2000;
 const REQUEST_TIMEOUT_MS = 3000;
 
 class ProtonDexSubscriber {
