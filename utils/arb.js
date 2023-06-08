@@ -207,9 +207,9 @@ class ArbitrageEngine {
       opportunity.trades[0].amountCounterCurrency - opportunity.trades[1].amountCounterCurrency,
     );
 
-    const profit = toFixedNumber(revenueInCounterCurrency - totalFeesInCounterCurrency, opportunity.precision, 10); // round to the opportunity's precision, base 10
+    const profit = toFixedNumber(revenueInCounterCurrency - totalFeesInCounterCurrency, 6, 10); // round to XMD max precision
     this.logger.info(`profit: ${profit} ${opportunity.trades[1].counterCurrency}`);
-    if (profit > 0) {
+    if (profit > 0.000001) {
       return true;
     }
 
