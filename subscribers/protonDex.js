@@ -1,11 +1,13 @@
 const axios = require('axios');
 const Promise = require('bluebird');
+const SmartInterval = require('smartinterval');
 const { OrderBook } = require('../utils');
 
 // const protonDexEndpoint = 'metallicus-dbapi-dev01.binfra.one'; // testnet
 const protonDexEndpoint = 'metal-dexdb.global.binfra.one'; // mainnet
 
-const UPDATE_INTERVAL_SECONDS = 2;
+const ORDERBOOK_UPDATE_INTERVAL_MS = 3000;
+const REQUEST_TIMEOUT_MS = 3000;
 
 class ProtonDexSubscriber {
   constructor(exchangeProducts, logger) {
@@ -42,8 +44,9 @@ class ProtonDexSubscriber {
 
   stop() {
     this.logger.info(`${this.name}: STOP`);
-    this.intervalIds.forEach((id) => {
-      clearInterval(id);
+    this.intervalIds.forEach((interval) => {
+      // clearInterval(id);
+      interval.stop();
     });
   }
 
@@ -51,9 +54,11 @@ class ProtonDexSubscriber {
     this.logger.info(`${this.name}: Opened`);
     await Promise.each(this.exchangeProducts, async (ep) => {
       await this.initOrderbook(ep);
-      this.intervalIds.push(setInterval(async () => {
+      const smartInterval = new SmartInterval(async () => {
         await this.initOrderbook(ep);
-      }, UPDATE_INTERVAL_SECONDS * 1000));
+      }, ORDERBOOK_UPDATE_INTERVAL_MS);
+      smartInterval.start();
+      this.intervalIds.push(smartInterval);
     });
     this.logger.info('ProtonDex: Initialized Orderbook');
   }
@@ -62,7 +67,7 @@ class ProtonDexSubscriber {
     const stepSize = 10 ** ep.product.counterProductPrecision;
     const query = `?symbol=${ep.localSymbol}&limit=${100}&step=${stepSize}`;
     const { data: snapshot } = await axios.get(`${this.URL.protocol}${this.URL.domainName}${this.URL.path}${query}`, {
-      timeout: 2000,
+      timeout: REQUEST_TIMEOUT_MS,
     });
 
     const bids = snapshot.data.bids.map((bid) => ({ price: bid.level, qty: bid.bid }));

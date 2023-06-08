@@ -21,7 +21,7 @@ const chainUrlsProd = [
 //   'https://test.proton.eosusa.news',
 // ];
 
-const TIME_DELAY_SECONDS = 6;
+const TIME_DELAY_MS = 6000;
 
 const initProtonDex = async (logger) => {
   const protonDex = new ccxt.ProtonDexV2({
@@ -261,10 +261,10 @@ const getAccountBalances = async (ccxtExchanges) => {
       await arbEngine.executeOpportunity(opportunityMtl);
     }
 
-    logger.info(`next checking for opportunities in ${TIME_DELAY_SECONDS} seconds...\n\n\n\n`);
+    logger.info(`next checking for opportunities in ${TIME_DELAY_MS / 1000} seconds...\n\n\n\n`);
 
     // eslint-disable-next-line no-await-in-loop
-    await new Promise((r) => { setTimeout(r, TIME_DELAY_SECONDS * 1000); });
+    await new Promise((r) => { setTimeout(r, TIME_DELAY_MS); });
     // eslint-disable-next-line no-await-in-loop
     const balances = await getAccountBalances([protonDex, coinbase]);
     arbEngine.updateBalances(balances);
