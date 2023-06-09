@@ -32,9 +32,8 @@ class CoinbaseSubscriber {
   }
 
   restart() {
-    this.ws.close();
-    this.logger.info('Coinbase: RESTART in 2 seconds...');
-    setTimeout(this.start, 2000);
+    this.logger.info('Coinbase: RESTART');
+    this.start();
   }
 
   // Function to generate a signature using CryptoJS
@@ -50,7 +49,7 @@ class CoinbaseSubscriber {
     return { ...message, signature: sig, timestamp };
   }
 
-  async start() {
+  start() {
     const uri = 'wss://advanced-trade-ws.coinbase.com';
     this.ws = new WebSocket(uri);
     this.ws.on('message', (data) => {
@@ -101,8 +100,8 @@ class CoinbaseSubscriber {
     this.ws.on('close', this.wsOnClose.bind(this));
   }
 
-  wsOnErr() {
-    this.restart();
+  wsOnErr(event) {
+    this.logger.error(`Coinbase websocket error ${event}`);
   }
 
   wsOnOpen() {
@@ -110,8 +109,8 @@ class CoinbaseSubscriber {
     this.subscribeToProducts(this.exchangeProductSymbols, CHANNEL_NAMES.level2);
   }
 
-  wsOnClose() {
-    this.logger.warn('Coinbase websocket closed');
+  wsOnClose(event) {
+    this.logger.warn(`Coinbase websocket closed ${event}`);
     this.restart();
   }
 

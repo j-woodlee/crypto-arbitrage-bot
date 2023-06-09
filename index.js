@@ -214,7 +214,7 @@ const getAccountBalances = async (ccxtExchanges) => {
     logger,
   );
   let liveCheck = null;
-  let live = true;
+  const live = true;
   while (live) {
     if (!liveCheck || moment(liveCheck.lastCheck).isBefore(moment().subtract('3', 'minutes'))) {
       if (!liveCheck) {
@@ -225,8 +225,8 @@ const getAccountBalances = async (ccxtExchanges) => {
       console.log('liveCheck: ');
       console.log(liveCheck);
       if (liveCheck.unresponsiveOrderbookCount > 0) {
-        live = false;
-        throw new Error('at least one orderbook is unresponsive');
+        orderBookService.restartWs();
+        liveCheck = false;
       }
     }
     const opportunityBtc = arbEngine.findOpportunity(

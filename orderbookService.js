@@ -86,8 +86,8 @@ class OrderBookService {
     return liveCheck;
   }
 
-  restartWs(keys) {
-    keys.forEach((key) => {
+  restartWs() {
+    Object.keys(this.subscribers).forEach(async (key) => {
       const sub = this.subscribers[key];
       sub.restart();
     });
