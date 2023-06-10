@@ -34,6 +34,10 @@ class OrderBook {
     this.precision = precision;
   }
 
+  isPopulated() {
+    return this.bids.size > 0 && this.asks.size > 0;
+  }
+
   init(bids, asks) {
     // console.log('Initializing ORDER BOOK');
     this.updatedAt = moment();
@@ -77,7 +81,7 @@ class OrderBook {
 
   isLive() {
     if (this.updatedAt) {
-      return this.updatedAt.isAfter(moment().subtract(1, 'minute'));
+      return this.updatedAt.isAfter(moment().subtract(30, 'seconds'));
     }
     return false;
   }

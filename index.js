@@ -1,3 +1,4 @@
+/* eslint-disable no-constant-condition */
 /* eslint-disable no-continue */
 /* eslint-disable no-await-in-loop */
 const { default: Logger } = require('@metalpay/metal-nebula-logger');
@@ -211,36 +212,33 @@ const getAccountBalances = async (ccxtExchanges) => {
     logger,
   );
   let liveCheck = null;
-  // const live = true;
   while (true) {
     try {
       const balances = await getAccountBalances([protonDex, coinbase]);
       arbEngine.updateBalances(balances);
     } catch (e) {
-      this.logger.error(`e.message: ${e.message}, e.code: ${e.code},
+      logger.error(`e.message: ${e.message}, e.code: ${e.code},
         error fetching balances`);
       continue;
     }
     console.log(arbEngine.accountBalances);
     if (!liveCheck || moment(liveCheck.lastCheck).isBefore(moment().subtract('1', 'minutes'))) {
-      if (!liveCheck) {
-        // eslint-disable-next-line no-await-in-loop
-        logger.info('waiting 5 seconds for sockets');
-        await new Promise((r) => { setTimeout(r, 5000); }); // wait 5 seconds for sockets to startup
-      }
       liveCheck = orderBookService.checkOrderBooks();
       console.log('liveCheck: ');
       console.log(liveCheck);
       if (liveCheck.unresponsiveOrderbookCount > 0) {
         await orderBookService.restartWs();
-        liveCheck = false;
       }
     }
     // somewhere in the code we wanted to induce an orderbook restart
     if (subscribers.ProtonDex.shouldRestart || subscribers.Coinbase.shouldRestart) {
-      logger.info('manual restart');
+      logger.info('MANUAL RESTART');
       await orderBookService.restartWs();
       liveCheck = false;
+      continue;
+    }
+    if (!orderBookService.orderbooksPopulated()) {
+      logger.info('Orderbooks not populated');
       continue;
     }
     const opportunityBtc = arbEngine.findOpportunity(

@@ -33,6 +33,7 @@ class CoinbaseSubscriber {
 
   restart() {
     this.logger.info('Coinbase: RESTART');
+    this.emptyOrderbooks();
     this.start();
   }
 
@@ -112,6 +113,12 @@ class CoinbaseSubscriber {
   wsOnClose(event) {
     this.logger.warn(`Coinbase websocket closed ${event}`);
     this.restart();
+  }
+
+  emptyOrderbooks() {
+    this.exchangeProducts.forEach((ep) => {
+      this.orderBooks[ep.localSymbol].empty();
+    });
   }
 
   subscribeToProducts(products, channelName) {

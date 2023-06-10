@@ -72,11 +72,6 @@ class OrderBookService {
         if (sub.orderBooks[localSymbol].isLive()) {
           liveCheck.liveOrderbookCount += 1;
         } else {
-          const { updatedAt } = sub.orderBooks[localSymbol];
-          if (updatedAt && moment(updatedAt).isBefore(moment().subtract('10', 'minutes'))) {
-            sub.shouldRestart = true;
-            liveCheck.deadSocketConnections.push(`${exchangeName}-${localSymbol}`);
-          }
           let lastUpdated = sub.orderBooks[localSymbol].updatedAt;
           lastUpdated = lastUpdated ? lastUpdated.toDate() : null;
           liveCheck.unresponsiveOrderbookCount += 1;
@@ -85,6 +80,17 @@ class OrderBookService {
       });
     });
     return liveCheck;
+  }
+
+  orderbooksPopulated() {
+    const isPopulated = [];
+    Object.keys(this.subscribers).forEach(async (exchangeName) => {
+      const sub = this.subscribers[exchangeName];
+      Object.keys(sub.orderBooks).forEach((localSymbol) => {
+        isPopulated.push(sub.orderBooks[localSymbol].isPopulated());
+      });
+    });
+    return isPopulated.every((v) => v === true); // return true if every orderbook is populated
   }
 
   async restartWs() {

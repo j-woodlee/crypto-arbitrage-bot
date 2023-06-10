@@ -7,7 +7,7 @@ const { OrderBook } = require('../utils');
 const protonDexEndpoint = 'metal-dexdb.global.binfra.one'; // mainnet
 // const protonDexEndpoint = 'mainnet.api.protondex.com';
 
-const ORDERBOOK_UPDATE_INTERVAL_MS = 3000;
+const ORDERBOOK_UPDATE_INTERVAL_MS = 1000;
 const REQUEST_TIMEOUT_MS = 4000;
 
 class ProtonDexSubscriber {
@@ -15,7 +15,7 @@ class ProtonDexSubscriber {
     this.exchangeProducts = exchangeProducts;
     this.logger = logger;
     this.orderBooks = {};
-    this.exchangeProductSymbols = [];
+    this.intervalIds = [];
     exchangeProducts.forEach((ep) => {
       this.orderBooks[ep.localSymbol] = new OrderBook(
         'ProtonDex',
@@ -24,7 +24,11 @@ class ProtonDexSubscriber {
         ep.counterCurrency,
         ep.precision,
       );
-      this.exchangeProductSymbols.push(ep.localSymbol);
+      console.log(`adding smart interval to ${ep.localSymbol}`);
+      const smartInterval = new SmartInterval(async () => {
+        await this.initOrderbook(ep);
+      }, ORDERBOOK_UPDATE_INTERVAL_MS);
+      this.intervalIds.push(smartInterval);
     });
     this.name = 'ProtonDex';
     this.lastUpdateId = null;
@@ -34,7 +38,6 @@ class ProtonDexSubscriber {
       domainName: protonDexEndpoint,
       path: '/dex/v1/orders/depth',
     };
-    this.intervalIds = [];
     this.shouldRestart = false;
   }
 
@@ -53,13 +56,9 @@ class ProtonDexSubscriber {
 
   async start() {
     this.logger.info(`${this.name}: START`);
-    await Promise.each(this.exchangeProducts, async (ep) => {
-      await this.initOrderbook(ep);
-      const smartInterval = new SmartInterval(async () => {
-        await this.initOrderbook(ep);
-      }, ORDERBOOK_UPDATE_INTERVAL_MS);
-      smartInterval.start();
-      this.intervalIds.push(smartInterval);
+    await Promise.each(this.intervalIds, async (si) => {
+      await si.cycle(true); // force a cycle to populate orderbook
+      si.start();
     });
     this.logger.info('ProtonDex: Initialized Orderbook');
   }
@@ -96,8 +95,13 @@ class ProtonDexSubscriber {
         ep.counterCurrency,
         ep.precision,
       );
-      this.exchangeProductSymbols.push(ep.localSymbol);
+      console.log(`adding smart interval to ${ep.localSymbol}`);
+      const smartInterval = new SmartInterval(async () => {
+        await this.initOrderbook(ep);
+      }, ORDERBOOK_UPDATE_INTERVAL_MS);
+      this.intervalIds.push(smartInterval);
     });
+
     this.exchangeProducts = this.exchangeProducts.concat(exchangeProducts);
     this.logger.info(`Added ${JSON.stringify(exchangeProducts)}`);
     this.restart();
