@@ -1,3 +1,4 @@
+/* eslint-disable no-continue */
 /* eslint-disable no-await-in-loop */
 const { default: Logger } = require('@metalpay/metal-nebula-logger');
 const { default: ccxt } = require('@metalpay/metal-ccxt-lib');
@@ -219,15 +220,23 @@ const getAccountBalances = async (ccxtExchanges) => {
     if (!liveCheck || moment(liveCheck.lastCheck).isBefore(moment().subtract('3', 'minutes'))) {
       if (!liveCheck) {
         // eslint-disable-next-line no-await-in-loop
+        logger.info('waiting 5 seconds for sockets');
         await new Promise((r) => { setTimeout(r, 5000); }); // wait 5 seconds for sockets to startup
       }
       liveCheck = orderBookService.checkOrderBooks();
       console.log('liveCheck: ');
       console.log(liveCheck);
       if (liveCheck.unresponsiveOrderbookCount > 0) {
-        orderBookService.restartWs();
+        await orderBookService.restartWs();
         liveCheck = false;
       }
+    }
+    // somewhere in the code we wanted to induce an orderbook restart
+    if (subscribers.ProtonDex.shouldRestart || subscribers.Coinbase.shouldRestart) {
+      logger.info('manual restart');
+      await orderBookService.restartWs();
+      liveCheck = false;
+      continue;
     }
     const opportunityBtc = arbEngine.findOpportunity(
       subscribers.Coinbase.orderBooks['BTC-USD'],

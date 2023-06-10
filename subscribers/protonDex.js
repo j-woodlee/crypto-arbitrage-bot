@@ -5,9 +5,10 @@ const { OrderBook } = require('../utils');
 
 // const protonDexEndpoint = 'metallicus-dbapi-dev01.binfra.one'; // testnet
 const protonDexEndpoint = 'metal-dexdb.global.binfra.one'; // mainnet
+// const protonDexEndpoint = 'mainnet.api.protondex.com';
 
-const ORDERBOOK_UPDATE_INTERVAL_MS = 2000;
-const REQUEST_TIMEOUT_MS = 3000;
+const ORDERBOOK_UPDATE_INTERVAL_MS = 3000;
+const REQUEST_TIMEOUT_MS = 4000;
 
 class ProtonDexSubscriber {
   constructor(exchangeProducts, logger) {
@@ -34,24 +35,24 @@ class ProtonDexSubscriber {
       path: '/dex/v1/orders/depth',
     };
     this.intervalIds = [];
+    this.shouldRestart = false;
   }
 
-  restart() {
+  async restart() {
     this.logger.info(`${this.name}: RESTART...`);
     this.stop();
-    this.start();
+    await this.start();
   }
 
   stop() {
     this.logger.info(`${this.name}: STOP`);
     this.intervalIds.forEach((interval) => {
-      // clearInterval(id);
       interval.stop();
     });
   }
 
   async start() {
-    this.logger.info(`${this.name}: Opened`);
+    this.logger.info(`${this.name}: START`);
     await Promise.each(this.exchangeProducts, async (ep) => {
       await this.initOrderbook(ep);
       const smartInterval = new SmartInterval(async () => {
@@ -66,9 +67,19 @@ class ProtonDexSubscriber {
   async initOrderbook(ep) {
     const stepSize = 10 ** ep.product.counterProductPrecision;
     const query = `?symbol=${ep.localSymbol}&limit=${100}&step=${stepSize}`;
-    const { data: snapshot } = await axios.get(`${this.URL.protocol}${this.URL.domainName}${this.URL.path}${query}`, {
-      timeout: REQUEST_TIMEOUT_MS,
-    });
+    let snapshot;
+    try {
+      const { data } = await axios.get(`${this.URL.protocol}${this.URL.domainName}${this.URL.path}${query}`, {
+        timeout: REQUEST_TIMEOUT_MS,
+      });
+      snapshot = data;
+    } catch (e) {
+      this.logger.error(`e.message: ${e.message}, e.code: ${e.code},
+        error fetching orderbook for ProtonDex product ${ep.localSymbol}`);
+      this.orderBooks[ep.localSymbol].empty();
+      this.shouldRestart = true;
+      return;
+    }
 
     const bids = snapshot.data.bids.map((bid) => ({ price: bid.level, qty: bid.bid }));
     const asks = snapshot.data.asks.map((ask) => ({ price: ask.level, qty: ask.bid }));

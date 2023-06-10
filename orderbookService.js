@@ -74,6 +74,7 @@ class OrderBookService {
         } else {
           const { updatedAt } = sub.orderBooks[localSymbol];
           if (updatedAt && moment(updatedAt).isBefore(moment().subtract('10', 'minutes'))) {
+            sub.shouldRestart = true;
             liveCheck.deadSocketConnections.push(`${exchangeName}-${localSymbol}`);
           }
           let lastUpdated = sub.orderBooks[localSymbol].updatedAt;
@@ -86,10 +87,11 @@ class OrderBookService {
     return liveCheck;
   }
 
-  restartWs() {
-    Object.keys(this.subscribers).forEach(async (key) => {
+  async restartWs() {
+    await Promise.each(Object.keys(this.subscribers), async (key) => {
       const sub = this.subscribers[key];
-      sub.restart();
+      await sub.restart();
+      sub.shouldRestart = false;
     });
   }
 }
