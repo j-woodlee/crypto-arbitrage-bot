@@ -186,15 +186,12 @@ const getAccountBalances = async (ccxtExchanges) => {
 
   const protonDex = await initProtonDex(logger);
   const coinbase = await initCoinbase();
-  const accountBalances = await getAccountBalances([protonDex, coinbase]);
+  // const accountBalances = await getAccountBalances([protonDex, coinbase]);
   const orderBookService = new OrderBookService(
     exchangeProducts,
     secrets,
     logger,
   );
-
-  console.log(accountBalances);
-
   // const averageBTCPurchasePrice = await getAveragePurchasePrice(coinbase, 'BTC-USD');
   // console.log('averageBTCPurchasePrice on coinbase: ');
   // console.log(averageBTCPurchasePrice);
@@ -211,13 +208,21 @@ const getAccountBalances = async (ccxtExchanges) => {
       ProtonDex: protonDex,
       Coinbase: coinbase,
     },
-    accountBalances,
     logger,
   );
   let liveCheck = null;
-  const live = true;
-  while (live) {
-    if (!liveCheck || moment(liveCheck.lastCheck).isBefore(moment().subtract('3', 'minutes'))) {
+  // const live = true;
+  while (true) {
+    try {
+      const balances = await getAccountBalances([protonDex, coinbase]);
+      arbEngine.updateBalances(balances);
+    } catch (e) {
+      this.logger.error(`e.message: ${e.message}, e.code: ${e.code},
+        error fetching balances`);
+      continue;
+    }
+    console.log(arbEngine.accountBalances);
+    if (!liveCheck || moment(liveCheck.lastCheck).isBefore(moment().subtract('1', 'minutes'))) {
       if (!liveCheck) {
         // eslint-disable-next-line no-await-in-loop
         logger.info('waiting 5 seconds for sockets');
@@ -245,8 +250,14 @@ const getAccountBalances = async (ccxtExchanges) => {
 
     if (opportunityBtc) {
       await arbEngine.executeOpportunity(opportunityBtc);
-      const balances = await getAccountBalances([protonDex, coinbase]);
-      arbEngine.updateBalances(balances);
+      try {
+        const balances = await getAccountBalances([protonDex, coinbase]);
+        arbEngine.updateBalances(balances);
+      } catch (e) {
+        this.logger.error(`e.message: ${e.message}, e.code: ${e.code},
+        error fetching balances after BTC opportunity execution`);
+        continue;
+      }
     }
 
     const opportunityEth = arbEngine.findOpportunity(
@@ -257,8 +268,14 @@ const getAccountBalances = async (ccxtExchanges) => {
     // TODO: use the executeOpportunities function to execute all opportunities
     if (opportunityEth) {
       await arbEngine.executeOpportunity(opportunityEth);
-      // const balances = await getAccountBalances([protonDex, coinbase]);
-      // arbEngine.updateBalances(balances);
+      try {
+        const balances = await getAccountBalances([protonDex, coinbase]);
+        arbEngine.updateBalances(balances);
+      } catch (e) {
+        this.logger.error(`e.message: ${e.message}, e.code: ${e.code},
+        error fetching balances after ETH opportunity execution`);
+        continue;
+      }
     }
 
     // const opportunityMtl = arbEngine.findOpportunity(
@@ -271,13 +288,6 @@ const getAccountBalances = async (ccxtExchanges) => {
     // }
 
     logger.info(`next checking for opportunities in ${TIME_DELAY_MS / 1000} seconds...\n\n\n\n`);
-
-    // eslint-disable-next-line no-await-in-loop
     await new Promise((r) => { setTimeout(r, TIME_DELAY_MS); });
-    // eslint-disable-next-line no-await-in-loop
-    const balances = await getAccountBalances([protonDex, coinbase]);
-    arbEngine.updateBalances(balances);
-    console.log('arbEngine.accountBalances: ');
-    console.log(arbEngine.accountBalances);
   }
 })();

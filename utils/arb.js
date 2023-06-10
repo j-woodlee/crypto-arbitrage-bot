@@ -18,9 +18,8 @@ const toFixedNumber = (num, digits, base) => {
 };
 
 class ArbitrageEngine {
-  constructor(ccxtExchanges, accountBalances, logger) {
+  constructor(ccxtExchanges, logger) {
     this.ccxtExchanges = ccxtExchanges;
-    this.accountBalances = accountBalances;
     this.logger = logger;
   }
 
