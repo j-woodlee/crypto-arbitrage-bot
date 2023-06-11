@@ -31,9 +31,10 @@ class CoinbaseSubscriber {
     });
   }
 
-  restart() {
-    this.logger.info('Coinbase: RESTART');
+  async restart() {
     this.emptyOrderbooks();
+    this.logger.info('Coinbase: RESTART in 3 seconds...');
+    await new Promise((r) => { setTimeout(r, 3000); });
     this.start();
   }
 
@@ -107,6 +108,7 @@ class CoinbaseSubscriber {
 
   wsOnOpen() {
     this.logger.info('Coinbase: Opened');
+    // if (this.ws !== WebSocket.OPEN) { console.log('ws not open'); return; }
     this.subscribeToProducts(this.exchangeProductSymbols, CHANNEL_NAMES.level2);
   }
 
