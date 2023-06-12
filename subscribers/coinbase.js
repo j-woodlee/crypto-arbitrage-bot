@@ -33,6 +33,10 @@ class CoinbaseSubscriber {
 
   async restart() {
     this.emptyOrderbooks();
+    if (this.ws.readyState !== WebSocket.CLOSED) {
+      this.ws.close(1000, 'client intentional closure');
+      return;
+    }
     this.logger.info('Coinbase: RESTART in 3 seconds...');
     await new Promise((r) => { setTimeout(r, 3000); });
     this.start();
