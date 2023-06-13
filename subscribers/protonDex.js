@@ -40,6 +40,27 @@ class ProtonDexSubscriber {
     this.shouldRestart = false;
   }
 
+  async updateAndGetOrderbook(ep) {
+    const stepSize = 10 ** ep.product.counterProductPrecision;
+    const query = `?symbol=${ep.localSymbol}&limit=${100}&step=${stepSize}`;
+    let snapshot;
+    try {
+      const { data } = await axios.get(`${this.URL.protocol}${this.URL.domainName}${this.URL.path}${query}`, {
+        timeout: 1000,
+      });
+      snapshot = data;
+    } catch (e) {
+      this.logger.error(`e.message: ${e.message}, e.code: ${e.code},
+        error fetching orderbook for ProtonDex product ${ep.localSymbol}`);
+      return this.updateAndGetOrderbook(ep);
+    }
+
+    const bids = snapshot.data.bids.map((bid) => ({ price: bid.level, qty: bid.bid }));
+    const asks = snapshot.data.asks.map((ask) => ({ price: ask.level, qty: ask.bid }));
+    this.orderBooks[ep.localSymbol].init(bids, asks);
+    return this.orderBooks[ep.localSymbol];
+  }
+
   async restart() {
     this.logger.info(`${this.name}: RESTART...`);
     this.stop();

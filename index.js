@@ -9,6 +9,10 @@ const OrderBookService = require('./orderbookService');
 const secrets = require('./secrets.json');
 const { ArbitrageEngine } = require('./utils');
 
+const {
+  ProtonDexSubscriber,
+} = require('./subscribers');
+
 const chainUrlsProd = [
   'https://metal-proton-rpc.global.binfra.one',
   'https://proton.cryptolions.io',
@@ -23,7 +27,7 @@ const chainUrlsProd = [
 //   'https://test.proton.eosusa.news',
 // ];
 
-const TIME_DELAY_MS = 6000;
+const TIME_DELAY_MS = 5000;
 
 const initProtonDex = async (logger) => {
   const protonDex = new ccxt.ProtonDexV2({
@@ -122,7 +126,7 @@ const getAccountBalances = async (ccxtExchanges) => {
 
 (async () => {
   const logger = Logger('arb bot');
-  const exchangeProducts = [
+  const coinbaseExchangeProducts = [
     {
       exchangeName: 'Coinbase',
       localSymbol: 'BTC-USD',
@@ -153,26 +157,28 @@ const getAccountBalances = async (ccxtExchanges) => {
     //   counterCurrency: 'USD',
     //   precision: 2,
     // },
-    {
-      exchangeName: 'ProtonDex',
-      localSymbol: 'XBTC_XMD',
-      product: {
-        counterProductPrecision: 6,
-      },
-      baseCurrency: 'XBTC',
-      counterCurrency: 'XMD',
-      precision: 8,
+  ];
+
+  const protonDexExchangeProducts = [{
+    exchangeName: 'ProtonDex',
+    localSymbol: 'XBTC_XMD',
+    product: {
+      counterProductPrecision: 6,
     },
-    {
-      exchangeName: 'ProtonDex',
-      localSymbol: 'XETH_XMD',
-      product: {
-        counterProductPrecision: 6,
-      },
-      baseCurrency: 'XETH',
-      counterCurrency: 'XMD',
-      precision: 8,
+    baseCurrency: 'XBTC',
+    counterCurrency: 'XMD',
+    precision: 8,
+  },
+  {
+    exchangeName: 'ProtonDex',
+    localSymbol: 'XETH_XMD',
+    product: {
+      counterProductPrecision: 6,
     },
+    baseCurrency: 'XETH',
+    counterCurrency: 'XMD',
+    precision: 8,
+  },
     // {
     //   exchangeName: 'ProtonDex',
     //   localSymbol: 'XMT_XMD',
@@ -189,7 +195,7 @@ const getAccountBalances = async (ccxtExchanges) => {
   const coinbase = await initCoinbase();
   // const accountBalances = await getAccountBalances([protonDex, coinbase]);
   const orderBookService = new OrderBookService(
-    exchangeProducts,
+    coinbaseExchangeProducts,
     secrets,
     logger,
   );
@@ -211,6 +217,8 @@ const getAccountBalances = async (ccxtExchanges) => {
     },
     logger,
   );
+
+  const protonDexSubscriber = new ProtonDexSubscriber(protonDexExchangeProducts, logger);
   let liveCheck = null;
   while (true) {
     try {
@@ -231,25 +239,27 @@ const getAccountBalances = async (ccxtExchanges) => {
       }
     }
     // somewhere in the code we wanted to induce an orderbook restart
-    if (subscribers.ProtonDex.shouldRestart) {
-      logger.info('MANUAL RESTART ProtonDex');
-      await orderBookService.restartWs(['ProtonDex']);
-      liveCheck = false;
-      continue;
-    }
+    // if (subscribers.ProtonDex.shouldRestart) {
+    //   logger.info('MANUAL RESTART ProtonDex');
+    //   await orderBookService.restartWs(['ProtonDex']);
+    //   liveCheck = false;
+    //   continue;
+    // }
     if (subscribers.Coinbase.shouldRestart) {
       logger.info('MANUAL RESTART Coinbase');
       await orderBookService.restartWs(['Coinbase']);
       liveCheck = false;
       continue;
     }
-    if (!orderBookService.orderbooksPopulated()) {
+    if (!orderBookService.orderbooksPopulated()) { // only checks the orderbooks of the orderBookService subscribers
       logger.info('Orderbooks not populated');
       continue;
     }
+
+    const protonDexBtcOrderbook = await protonDexSubscriber.updateAndGetOrderbook(protonDexExchangeProducts[0]);
     const opportunityBtc = arbEngine.findOpportunity(
       subscribers.Coinbase.orderBooks['BTC-USD'],
-      subscribers.ProtonDex.orderBooks.XBTC_XMD,
+      protonDexBtcOrderbook,
     );
 
     if (opportunityBtc) {
@@ -264,9 +274,10 @@ const getAccountBalances = async (ccxtExchanges) => {
       }
     }
 
+    const protonDexEthOrderbook = await protonDexSubscriber.updateAndGetOrderbook(protonDexExchangeProducts[1]);
     const opportunityEth = arbEngine.findOpportunity(
       subscribers.Coinbase.orderBooks['ETH-USD'],
-      subscribers.ProtonDex.orderBooks.XETH_XMD,
+      protonDexEthOrderbook,
     );
 
     // TODO: use the executeOpportunities function to execute all opportunities
