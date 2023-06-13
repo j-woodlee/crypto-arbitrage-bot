@@ -8,7 +8,7 @@ const protonDexEndpoint = 'metal-dexdb.global.binfra.one'; // mainnet
 // const protonDexEndpoint = 'mainnet.api.protondex.com';
 
 const ORDERBOOK_UPDATE_INTERVAL_MS = 1000;
-const REQUEST_TIMEOUT_MS = 4000;
+const REQUEST_TIMEOUT_MS = 2000;
 
 class ProtonDexSubscriber {
   constructor(exchangeProducts, logger) {
@@ -24,7 +24,6 @@ class ProtonDexSubscriber {
         ep.counterCurrency,
         ep.precision,
       );
-      console.log(`adding smart interval to ${ep.localSymbol}`);
       const smartInterval = new SmartInterval(async () => {
         await this.initOrderbook(ep);
       }, ORDERBOOK_UPDATE_INTERVAL_MS);
@@ -95,7 +94,6 @@ class ProtonDexSubscriber {
         ep.counterCurrency,
         ep.precision,
       );
-      console.log(`adding smart interval to ${ep.localSymbol}`);
       const smartInterval = new SmartInterval(async () => {
         await this.initOrderbook(ep);
       }, ORDERBOOK_UPDATE_INTERVAL_MS);

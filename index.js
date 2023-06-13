@@ -227,13 +227,19 @@ const getAccountBalances = async (ccxtExchanges) => {
       console.log('liveCheck: ');
       console.log(liveCheck);
       if (liveCheck.unresponsiveOrderbookCount > 0) {
-        await orderBookService.restartWs();
+        await orderBookService.restartAllWs();
       }
     }
     // somewhere in the code we wanted to induce an orderbook restart
-    if (subscribers.ProtonDex.shouldRestart || subscribers.Coinbase.shouldRestart) {
-      logger.info('MANUAL RESTART');
-      await orderBookService.restartWs();
+    if (subscribers.ProtonDex.shouldRestart) {
+      logger.info('MANUAL RESTART ProtonDex');
+      await orderBookService.restartWs(['ProtonDex']);
+      liveCheck = false;
+      continue;
+    }
+    if (subscribers.Coinbase.shouldRestart) {
+      logger.info('MANUAL RESTART Coinbase');
+      await orderBookService.restartWs(['Coinbase']);
       liveCheck = false;
       continue;
     }

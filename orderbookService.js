@@ -93,7 +93,15 @@ class OrderBookService {
     return isPopulated.every((v) => v === true); // return true if every orderbook is populated
   }
 
-  async restartWs() {
+  async restartWs(wsToRestart) {
+    await Promise.each(wsToRestart, async (key) => {
+      const sub = this.subscribers[key];
+      await sub.restart();
+      sub.shouldRestart = false;
+    });
+  }
+
+  async restartAllWs() {
     await Promise.each(Object.keys(this.subscribers), async (key) => {
       const sub = this.subscribers[key];
       await sub.restart();
