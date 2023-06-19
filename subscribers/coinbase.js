@@ -116,9 +116,9 @@ class CoinbaseSubscriber {
     this.subscribeToProducts(this.exchangeProductSymbols, CHANNEL_NAMES.level2);
   }
 
-  wsOnClose(event) {
+  async wsOnClose(event) {
     this.logger.warn(`Coinbase websocket closed ${event}`);
-    this.restart();
+    await this.restart();
   }
 
   emptyOrderbooks() {
