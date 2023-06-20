@@ -127,6 +127,11 @@ class CoinbaseSubscriber {
     });
   }
 
+  websocketsOpen() {
+    const websocketsOpen = this.ws.readyState === WebSocket.OPEN;
+    return websocketsOpen;
+  }
+
   subscribeToProducts(products, channelName) {
     const message = {
       type: 'subscribe',

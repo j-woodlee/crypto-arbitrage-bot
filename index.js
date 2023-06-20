@@ -226,7 +226,8 @@ const getAccountBalances = async (ccxtExchanges) => {
       arbEngine.updateBalances(balances);
     } catch (e) {
       logger.error(`e.message: ${e.message}, e.code: ${e.code},
-        error fetching balances`);
+        error fetching balances, trying again...`);
+      await new Promise((r) => { setTimeout(r, 1000); }); // wait 1 second to try again
       continue;
     }
     console.log(arbEngine.accountBalances);
@@ -251,6 +252,12 @@ const getAccountBalances = async (ccxtExchanges) => {
       liveCheck = false;
       continue;
     }
+
+    if (!subscribers.Coinbase.websocketsOpen()) {
+      logger.info('Coinbase websockets not open');
+      continue;
+    }
+
     if (!orderBookService.orderbooksPopulated()) { // only checks the orderbooks of the orderBookService subscribers
       logger.info('Orderbooks not populated');
       continue;
