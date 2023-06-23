@@ -258,8 +258,8 @@ const getAccountBalances = async (ccxtExchanges) => {
       continue;
     }
 
-    if (!orderBookService.orderbooksPopulated()) { // only checks the orderbooks of the orderBookService subscribers
-      logger.info('Orderbooks not populated');
+    if (!orderBookService.orderbooksInitialized()) {
+      logger.info('Orderbooks not initialized');
       continue;
     }
 

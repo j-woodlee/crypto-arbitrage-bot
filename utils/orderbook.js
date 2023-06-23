@@ -32,10 +32,7 @@ class OrderBook {
     this.baseCurrency = baseCurrency;
     this.counterCurrency = counterCurrency;
     this.precision = precision;
-  }
-
-  isPopulated() {
-    return this.bids.size > 0 && this.asks.size > 0;
+    this.initialized = false;
   }
 
   init(bids, asks) {
@@ -54,6 +51,7 @@ class OrderBook {
         this.asks.insert(ask);
       }
     });
+    this.initialized = true;
   }
 
   update(bids, asks) {
@@ -77,6 +75,7 @@ class OrderBook {
   empty() {
     this.bids.clear();
     this.asks.clear();
+    this.initialized = false;
   }
 
   isLive() {

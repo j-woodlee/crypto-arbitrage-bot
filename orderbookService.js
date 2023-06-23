@@ -82,15 +82,15 @@ class OrderBookService {
     return liveCheck;
   }
 
-  orderbooksPopulated() {
-    const isPopulated = [];
+  orderbooksInitialized() {
+    const isInitialized = [];
     Object.keys(this.subscribers).forEach(async (exchangeName) => {
       const sub = this.subscribers[exchangeName];
       Object.keys(sub.orderBooks).forEach((localSymbol) => {
-        isPopulated.push(sub.orderBooks[localSymbol].isPopulated());
+        isInitialized.push(sub.orderBooks[localSymbol].initialized);
       });
     });
-    return isPopulated.every((v) => v === true); // return true if every orderbook is populated
+    return isInitialized.every((v) => v === true); // return true if every orderbook is populated
   }
 
   async restartWs(wsToRestart) {
