@@ -287,7 +287,6 @@ const getAccountBalances = async (ccxtExchanges) => {
       protonDexEthOrderbook,
     );
 
-    // TODO: use the executeOpportunities function to execute all opportunities
     if (opportunityEth) {
       await arbEngine.executeOpportunity(opportunityEth);
       try {
@@ -299,15 +298,6 @@ const getAccountBalances = async (ccxtExchanges) => {
         continue;
       }
     }
-
-    // const opportunityMtl = arbEngine.findOpportunity(
-    //   subscribers.Coinbase.orderBooks['MTL-USD'],
-    //   subscribers.ProtonDex.orderBooks.XMT_XMD,
-    // );
-
-    // if (opportunityMtl) {
-    //   await arbEngine.executeOpportunity(opportunityMtl);
-    // }
 
     logger.info(`next checking for opportunities in ${TIME_DELAY_MS / 1000} seconds...\n\n\n\n`);
     await new Promise((r) => { setTimeout(r, TIME_DELAY_MS); });

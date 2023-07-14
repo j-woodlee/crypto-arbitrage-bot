@@ -83,6 +83,10 @@ class ArbitrageEngine {
     const lowestAsk2 = orderbook2.asks.min();
     const highestBid2 = orderbook2.bids.min();
 
+    if (!lowestAsk1 || !lowestAsk2 || !highestBid1 || !highestBid2) {
+      return undefined;
+    }
+
     this.logger.info(`${lowestAsk2.price} < ${highestBid1.price}`);
     if (lowestAsk2.price < highestBid1.price) {
       const opportunity = {};
