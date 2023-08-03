@@ -275,7 +275,7 @@ const getAccountBalances = async (ccxtExchanges) => {
         const balances = await getAccountBalances([protonDex, coinbase]);
         arbEngine.updateBalances(balances);
       } catch (e) {
-        this.logger.error(`e.message: ${e.message}, e.code: ${e.code},
+        logger.error(`e.message: ${e.message}, e.code: ${e.code},
         error fetching balances after BTC opportunity execution`);
         continue;
       }
@@ -293,7 +293,7 @@ const getAccountBalances = async (ccxtExchanges) => {
         const balances = await getAccountBalances([protonDex, coinbase]);
         arbEngine.updateBalances(balances);
       } catch (e) {
-        this.logger.error(`e.message: ${e.message}, e.code: ${e.code},
+        logger.error(`e.message: ${e.message}, e.code: ${e.code},
         error fetching balances after ETH opportunity execution`);
         continue;
       }
