@@ -1,5 +1,6 @@
+const crypto = require('crypto');
+const { sign } = require('jsonwebtoken');
 const WebSocket = require('ws');
-const CryptoJS = require('crypto-js');
 const { OrderBook } = require('../utils');
 
 const CHANNEL_NAMES = {
@@ -42,17 +43,24 @@ class CoinbaseSubscriber {
     this.start();
   }
 
-  // Function to generate a signature using CryptoJS
-  static sign(str, secret) {
-    const hash = CryptoJS.HmacSHA256(str, secret);
-    return hash.toString();
-  }
-
-  timestampAndSign(message, channel, products = []) {
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-    const strToSign = `${timestamp}${channel}${products.join(',')}`;
-    const sig = CoinbaseSubscriber.sign(strToSign, this.secrets.coinbaseApiSecret2);
-    return { ...message, signature: sig, timestamp };
+  static generateJWT(apiKeyName, privateKeyPEM) {
+    const now = Math.floor(Date.now() / 1000);
+    return sign(
+      {
+        iss: 'cdp',
+        nbf: now,
+        exp: now + 120,
+        sub: apiKeyName,
+      },
+      privateKeyPEM,
+      {
+        algorithm: 'ES256',
+        header: {
+          kid: apiKeyName,
+          nonce: crypto.randomBytes(16).toString('hex'),
+        },
+      },
+    );
   }
 
   start() {
@@ -60,8 +68,8 @@ class CoinbaseSubscriber {
     this.ws = new WebSocket(uri);
     this.ws.on('message', (data) => {
       const parsedData = JSON.parse(data);
-
       if (parsedData.channel === 'l2_data') {
+        // this.logger.info(`Coinbase: parsedData: ${JSON.stringify(parsedData)}`);
         const { events } = parsedData;
         events.forEach((event) => {
           const bids = [];
@@ -96,6 +104,8 @@ class CoinbaseSubscriber {
             // this.logger.info(`Coinbase: ${event.product_id} Updated Orderbook`);
           }
         });
+      } else {
+        this.logger.info(`Coinbase: parsedData: ${JSON.stringify(parsedData)}`);
       }
     });
 
@@ -133,27 +143,31 @@ class CoinbaseSubscriber {
   }
 
   subscribeToProducts(products, channelName) {
+    const jwt = CoinbaseSubscriber.generateJWT(
+      this.secrets.coinbaseApiKey2,
+      this.secrets.coinbaseApiSecret2,
+    );
     const message = {
       type: 'subscribe',
       channel: channelName,
-      api_key: this.secrets.coinbaseApiKey2,
+      jwt,
       product_ids: products,
     };
-    const subscribeMsg = this.timestampAndSign(message, channelName, products);
-    // console.log('JSON.stringify(subscribeMsg): ');
-    // console.log(JSON.stringify(subscribeMsg));
-    this.ws.send(JSON.stringify(subscribeMsg));
+    this.ws.send(JSON.stringify(message));
   }
 
   unsubscribeToProducts(products, channelName) {
+    const jwt = CoinbaseSubscriber.generateJWT(
+      this.secrets.coinbaseApiKey2,
+      this.secrets.coinbaseApiSecret2,
+    );
     const message = {
       type: 'unsubscribe',
       channel: channelName,
-      api_key: this.secrets.coinbaseApiKey2,
+      jwt,
       product_ids: products,
     };
-    const unsubMessage = this.timestampAndSign(message, channelName, products);
-    this.ws.send(JSON.stringify(unsubMessage));
+    this.ws.send(JSON.stringify(message));
   }
 
   // eslint-disable-next-line class-methods-use-this
