@@ -2,7 +2,8 @@
 /* eslint-disable no-continue */
 /* eslint-disable no-await-in-loop */
 const { default: Logger } = require('@metalpay/metal-nebula-logger');
-const { default: ccxt } = require('@metalpay/metal-ccxt-lib');
+const { default: metalCcxt } = require('@metalpay/metal-ccxt-lib');
+const ccxt = require('ccxt');
 const moment = require('moment');
 const Promise = require('bluebird');
 const OrderBookService = require('./orderbookService');
@@ -30,7 +31,7 @@ const chainUrlsProd = [
 const TIME_DELAY_MS = 5000;
 
 const initProtonDex = async (logger) => {
-  const protonDex = new ccxt.ProtonDexV2({
+  const protonDex = new metalCcxt.ProtonDexV2({
     privateKey: secrets.protonDexMainnetPrivateKey,
     chainUrls: chainUrlsProd,
     actor: secrets.mainnetActor,
@@ -44,7 +45,6 @@ const initProtonDex = async (logger) => {
 };
 
 const initCoinbase = async () => {
-  // eslint-disable-next-line new-cap
   const coinbase = new ccxt.coinbase({
     apiKey: secrets.coinbaseApiKey2,
     secret: secrets.coinbaseApiSecret2,
@@ -83,7 +83,10 @@ const initCoinbase = async () => {
 const getAccountBalances = async (ccxtExchanges) => {
   const accountBalances = {};
   await Promise.each(ccxtExchanges, async (exchange) => {
-    const exchangeName = exchange.name;
+    let exchangeName = exchange.name;
+    if (exchangeName === 'Coinbase Advanced') {
+      exchangeName = 'Coinbase';
+    }
     accountBalances[exchangeName] = {};
     const accounts = await exchange.fetchAccounts();
     // eslint-disable-next-line no-restricted-syntax
@@ -95,6 +98,8 @@ const getAccountBalances = async (ccxtExchanges) => {
       }
     }
   });
+  console.log('accountBalances: ');
+  console.log(accountBalances);
   return accountBalances;
 };
 
@@ -137,16 +142,16 @@ const getAccountBalances = async (ccxtExchanges) => {
       counterCurrency: 'USD',
       precision: 8,
     },
-    {
-      exchangeName: 'Coinbase',
-      localSymbol: 'ETH-USD',
-      product: {
-        counterProductPrecision: 6,
-      },
-      baseCurrency: 'ETH',
-      counterCurrency: 'USD',
-      precision: 7,
-    },
+    // {
+    //   exchangeName: 'Coinbase',
+    //   localSymbol: 'ETH-USD',
+    //   product: {
+    //     counterProductPrecision: 6,
+    //   },
+    //   baseCurrency: 'ETH',
+    //   counterCurrency: 'USD',
+    //   precision: 7,
+    // },
     // {
     //   exchangeName: 'Coinbase',
     //   localSymbol: 'MTL-USD',
@@ -169,16 +174,16 @@ const getAccountBalances = async (ccxtExchanges) => {
     counterCurrency: 'XMD',
     precision: 8,
   },
-  {
-    exchangeName: 'ProtonDex',
-    localSymbol: 'XETH_XMD',
-    product: {
-      counterProductPrecision: 6,
-    },
-    baseCurrency: 'XETH',
-    counterCurrency: 'XMD',
-    precision: 8,
-  },
+  // {
+  //   exchangeName: 'ProtonDex',
+  //   localSymbol: 'XETH_XMD',
+  //   product: {
+  //     counterProductPrecision: 6,
+  //   },
+  //   baseCurrency: 'XETH',
+  //   counterCurrency: 'XMD',
+  //   precision: 8,
+  // },
     // {
     //   exchangeName: 'ProtonDex',
     //   localSymbol: 'XMT_XMD',
@@ -230,11 +235,10 @@ const getAccountBalances = async (ccxtExchanges) => {
       await new Promise((r) => { setTimeout(r, 1000); }); // wait 1 second to try again
       continue;
     }
-    console.log(arbEngine.accountBalances);
+    // logger.info(`arbEngine.accountBalances: ${JSON.stringify(arbEngine.accountBalances, null, 2)}`);
     if (!liveCheck || moment(liveCheck.lastCheck).isBefore(moment().subtract('1', 'minutes'))) {
       liveCheck = orderBookService.checkOrderBooks();
-      console.log('liveCheck: ');
-      console.log(liveCheck);
+      logger.info(`liveCheck: ${JSON.stringify(liveCheck)}`);
       if (liveCheck.unresponsiveOrderbookCount > 0) {
         await orderBookService.restartAllWs();
       }
@@ -270,6 +274,8 @@ const getAccountBalances = async (ccxtExchanges) => {
     );
 
     if (opportunityBtc) {
+      console.log('opportunityBtc: ');
+      console.log(opportunityBtc);
       await arbEngine.executeOpportunity(opportunityBtc);
       try {
         const balances = await getAccountBalances([protonDex, coinbase]);
@@ -281,23 +287,23 @@ const getAccountBalances = async (ccxtExchanges) => {
       }
     }
 
-    const protonDexEthOrderbook = await protonDexSubscriber.updateAndGetOrderbook(protonDexExchangeProducts[1]);
-    const opportunityEth = arbEngine.findOpportunity(
-      subscribers.Coinbase.orderBooks['ETH-USD'],
-      protonDexEthOrderbook,
-    );
+    // const protonDexEthOrderbook = await protonDexSubscriber.updateAndGetOrderbook(protonDexExchangeProducts[1]);
+    // const opportunityEth = arbEngine.findOpportunity(
+    //   subscribers.Coinbase.orderBooks['ETH-USD'],
+    //   protonDexEthOrderbook,
+    // );
 
-    if (opportunityEth) {
-      await arbEngine.executeOpportunity(opportunityEth);
-      try {
-        const balances = await getAccountBalances([protonDex, coinbase]);
-        arbEngine.updateBalances(balances);
-      } catch (e) {
-        logger.error(`e.message: ${e.message}, e.code: ${e.code},
-        error fetching balances after ETH opportunity execution`);
-        continue;
-      }
-    }
+    // if (opportunityEth) {
+    //   await arbEngine.executeOpportunity(opportunityEth);
+    //   try {
+    //     const balances = await getAccountBalances([protonDex, coinbase]);
+    //     arbEngine.updateBalances(balances);
+    //   } catch (e) {
+    //     logger.error(`e.message: ${e.message}, e.code: ${e.code},
+    //     error fetching balances after ETH opportunity execution`);
+    //     continue;
+    //   }
+    // }
 
     logger.info(`next checking for opportunities in ${TIME_DELAY_MS / 1000} seconds...\n\n\n\n`);
     await new Promise((r) => { setTimeout(r, TIME_DELAY_MS); });
