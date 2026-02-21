@@ -220,7 +220,7 @@ class ArbitrageEngine {
 
     const profit = toFixedNumber(revenueInCounterCurrency - totalFeesInCounterCurrency, 6, 10); // round to XMD max precision
     // this.logger.info(`profit: ${profit} ${opportunity.trades[1].counterCurrency}`);
-    if (profit > 0.000001) {
+    if (profit > 0.000001) { // coinbase max precision is 8 for USD, XMD is 6. We take all profit greater than XMD's smallest unit
       // eslint-disable-next-line no-param-reassign
       opportunity.profit = profit;
       return true;
