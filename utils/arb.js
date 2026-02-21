@@ -48,7 +48,7 @@ class ArbitrageEngine {
     });
 
     const balanceBigEnough = canBuy && canSell;
-    this.logger.info(`balanceBigEnough: ${balanceBigEnough}`);
+    // this.logger.info(`balanceBigEnough: ${balanceBigEnough}`);
     return balanceBigEnough;
   }
 
@@ -99,7 +99,7 @@ class ArbitrageEngine {
       return undefined;
     }
 
-    this.logger.info(`${lowestAsk2.price} < ${highestBid1.price}`);
+    // this.logger.info(`${lowestAsk2.price} < ${highestBid1.price}`);
     if (lowestAsk2.price < highestBid1.price) {
       const opportunity = {};
       opportunity.lowestAsk2 = lowestAsk2;
@@ -146,14 +146,14 @@ class ArbitrageEngine {
 
       opportunity.precision = smallestPrecision;
 
-      this.logger.info(`${opportunity.trades[0].side} ${opportunity.trades[0].amount} ${opportunity.trades[0].symbol} at ${opportunity.trades[0].price} on ${opportunity.trades[0].exchangeName}, 
-                              ${opportunity.trades[1].side} ${opportunity.trades[1].amount} ${opportunity.trades[1].symbol} at ${opportunity.trades[1].price} on ${opportunity.trades[1].exchangeName}`);
       if (this.opportunityProfitable(opportunity) && this.balanceBigEnough(opportunity)) {
+        this.logger.info(`${opportunity.trades[0].side} ${opportunity.trades[0].amount} ${opportunity.trades[0].symbol} at ${opportunity.trades[0].price} on ${opportunity.trades[0].exchangeName}, 
+                              ${opportunity.trades[1].side} ${opportunity.trades[1].amount} ${opportunity.trades[1].symbol} at ${opportunity.trades[1].price} on ${opportunity.trades[1].exchangeName}`);
         return opportunity;
       }
     }
 
-    this.logger.info(`${lowestAsk1.price} < ${highestBid2.price}`);
+    // this.logger.info(`${lowestAsk1.price} < ${highestBid2.price}`);
     if (lowestAsk1.price < highestBid2.price) {
       const opportunity = {};
       opportunity.lowestAsk1 = lowestAsk1;
@@ -201,9 +201,9 @@ class ArbitrageEngine {
 
       opportunity.precision = smallestPrecision;
 
-      this.logger.info(`${opportunity.trades[0].side} ${opportunity.trades[0].amount} ${opportunity.trades[0].symbol} at ${opportunity.trades[0].price} on ${opportunity.trades[0].exchangeName}, 
-                              ${opportunity.trades[1].side} ${opportunity.trades[1].amount} ${opportunity.trades[1].symbol} at ${opportunity.trades[1].price} on ${opportunity.trades[1].exchangeName}`);
       if (this.opportunityProfitable(opportunity) && this.balanceBigEnough(opportunity)) {
+        this.logger.info(`${opportunity.trades[0].side} ${opportunity.trades[0].amount} ${opportunity.trades[0].symbol} at ${opportunity.trades[0].price} on ${opportunity.trades[0].exchangeName}, 
+                              ${opportunity.trades[1].side} ${opportunity.trades[1].amount} ${opportunity.trades[1].symbol} at ${opportunity.trades[1].price} on ${opportunity.trades[1].exchangeName}`);
         return opportunity;
       }
     }
@@ -227,8 +227,8 @@ class ArbitrageEngine {
     );
 
     const profit = toFixedNumber(revenueInCounterCurrency - totalFeesInCounterCurrency, 6, 10); // round to XMD max precision
-    this.logger.info(`profit: ${profit} ${opportunity.trades[1].counterCurrency}`);
     if (profit > 0.000001) {
+      // this.logger.info(`profit: ${profit} ${opportunity.trades[1].counterCurrency}`);
       return true;
     }
 

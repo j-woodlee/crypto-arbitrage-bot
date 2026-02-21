@@ -298,7 +298,7 @@ const getAccountBalances = async (ccxtExchanges) => {
         }
       }
     }
-    logger.info('------------------------------------------------');
+    logger.debug('------------------------------------------------');
   };
 
   orderBookService = new OrderBookService(
