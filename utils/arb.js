@@ -1,14 +1,6 @@
 /* eslint-disable max-len */
 const Promise = require('bluebird');
-
-const FEE_SCHEDULE = {
-  Coinbase: {
-    taker: 0.012,
-  },
-  ProtonDex: {
-    taker: 0,
-  },
-};
+const FEE_SCHEDULE = require('./feeSchedule');
 
 const toFixedNumber = (num, digits, base) => {
   const pow = (base ?? 10) ** digits;

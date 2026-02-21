@@ -1,6 +1,3 @@
-/* eslint-disable no-constant-condition */
-/* eslint-disable no-continue */
-/* eslint-disable no-await-in-loop */
 const fs = require('fs');
 const path = require('path');
 const { default: Logger } = require('@metalpay/metal-nebula-logger');
@@ -10,7 +7,7 @@ const moment = require('moment');
 const Promise = require('bluebird');
 const OrderBookService = require('./orderbookService');
 const secrets = require('./secrets.json');
-const { ArbitrageEngine } = require('./utils');
+const { ArbitrageEngine, FEE_SCHEDULE } = require('./utils');
 
 const {
   ProtonDexSubscriber,
@@ -37,12 +34,16 @@ const writeOpportunityToCsv = (opportunity) => {
   if (!fileExists) {
     const header = 'timestamp,buy_exchange,buy_symbol,buy_side,buy_amount,'
       + 'buy_price,buy_amount_counter,sell_exchange,sell_symbol,'
-      + 'sell_side,sell_amount,sell_price,sell_amount_counter\n';
+      + 'sell_side,sell_amount,sell_price,sell_amount_counter,net_profit\n';
     fs.writeFileSync(OPPORTUNITY_CSV_PATH, header);
   }
 
   const buyTrade = opportunity.trades.find((t) => t.side === 'buy');
   const sellTrade = opportunity.trades.find((t) => t.side === 'sell');
+  const tradeFees = opportunity.trades.map((t) => t.amountCounterCurrency * FEE_SCHEDULE[t.exchangeName].taker);
+  const totalFees = tradeFees.reduce((sum, fee) => sum + fee, 0);
+  const revenue = Math.abs(buyTrade.amountCounterCurrency - sellTrade.amountCounterCurrency);
+  const netProfit = (revenue - totalFees).toFixed(6);
   const row = [
     new Date().toISOString(),
     buyTrade.exchangeName,
@@ -57,6 +58,7 @@ const writeOpportunityToCsv = (opportunity) => {
     sellTrade.amount,
     sellTrade.price,
     sellTrade.amountCounterCurrency,
+    netProfit,
   ].join(',');
 
   fs.appendFileSync(OPPORTUNITY_CSV_PATH, `${row}\n`);
