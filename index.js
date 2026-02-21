@@ -291,6 +291,7 @@ const getAccountBalances = async (ccxtExchanges) => {
           // console.log('would execute opportunity here');
           await arbEngine.executeOpportunity(opportunityBtc);
           writeOpportunityToCsv(opportunityBtc);
+          await protonDexSubscriber.restart();
           const balances = await getAccountBalances([protonDex, coinbase]);
           arbEngine.updateBalances(balances);
         } catch (e) {
