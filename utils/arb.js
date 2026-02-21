@@ -219,8 +219,10 @@ class ArbitrageEngine {
     );
 
     const profit = toFixedNumber(revenueInCounterCurrency - totalFeesInCounterCurrency, 6, 10); // round to XMD max precision
+    // this.logger.info(`profit: ${profit} ${opportunity.trades[1].counterCurrency}`);
     if (profit > 0.000001) {
-      // this.logger.info(`profit: ${profit} ${opportunity.trades[1].counterCurrency}`);
+      // eslint-disable-next-line no-param-reassign
+      opportunity.profit = profit;
       return true;
     }
 

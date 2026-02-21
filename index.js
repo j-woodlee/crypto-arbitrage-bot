@@ -7,7 +7,7 @@ const moment = require('moment');
 const Promise = require('bluebird');
 const OrderBookService = require('./orderbookService');
 const secrets = require('./secrets.json');
-const { ArbitrageEngine, FEE_SCHEDULE } = require('./utils');
+const { ArbitrageEngine } = require('./utils');
 
 const {
   ProtonDexSubscriber,
@@ -40,10 +40,6 @@ const writeOpportunityToCsv = (opportunity) => {
 
   const buyTrade = opportunity.trades.find((t) => t.side === 'buy');
   const sellTrade = opportunity.trades.find((t) => t.side === 'sell');
-  const tradeFees = opportunity.trades.map((t) => t.amountCounterCurrency * FEE_SCHEDULE[t.exchangeName].taker);
-  const totalFees = tradeFees.reduce((sum, fee) => sum + fee, 0);
-  const revenue = Math.abs(buyTrade.amountCounterCurrency - sellTrade.amountCounterCurrency);
-  const netProfit = (revenue - totalFees).toFixed(6);
   const row = [
     new Date().toISOString(),
     buyTrade.exchangeName,
@@ -58,7 +54,7 @@ const writeOpportunityToCsv = (opportunity) => {
     sellTrade.amount,
     sellTrade.price,
     sellTrade.amountCounterCurrency,
-    netProfit,
+    opportunity.profit,
   ].join(',');
 
   fs.appendFileSync(OPPORTUNITY_CSV_PATH, `${row}\n`);
