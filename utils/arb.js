@@ -67,24 +67,24 @@ class ArbitrageEngine {
     // highestBid.price is the price we will be selling the asset at
     const askExchangeCounterCurrencyBalanceInBaseCurrency = this.accountBalances[askExchange][askCounterCurrency].value / lowestAsk.price; // base = counter / price
     const bidExchangeBaseCurrencyBalance = this.accountBalances[bidExchange][bidBaseCurrency].value;
-    console.log('bidExchange: ');
-    console.log(bidExchange);
-    console.log('askExchangeCounterCurrencyBalanceInBaseCurrency: ');
-    console.log(askExchangeCounterCurrencyBalanceInBaseCurrency);
-    console.log('bidExchangeBaseCurrencyBalance: ');
-    console.log(bidExchangeBaseCurrencyBalance);
-    console.log('lowestAsk.qty: ');
-    console.log(lowestAsk.qty);
-    console.log('highestBid.qty: ');
-    console.log(highestBid.qty);
+    // console.log('bidExchange: ');
+    // console.log(bidExchange);
+    // console.log('askExchangeCounterCurrencyBalanceInBaseCurrency: ');
+    // console.log(askExchangeCounterCurrencyBalanceInBaseCurrency);
+    // console.log('bidExchangeBaseCurrencyBalance: ');
+    // console.log(bidExchangeBaseCurrencyBalance);
+    // console.log('lowestAsk.qty: ');
+    // console.log(lowestAsk.qty);
+    // console.log('highestBid.qty: ');
+    // console.log(highestBid.qty);
     const smallestValue = Math.min(
       lowestAsk.qty,
       highestBid.qty,
       askExchangeCounterCurrencyBalanceInBaseCurrency,
       bidExchangeBaseCurrencyBalance,
     );
-    console.log('smallestValue: ');
-    console.log(smallestValue);
+    // console.log('smallestValue: ');
+    // console.log(smallestValue);
     // take 1.2% off just for the worse case taker order, so we dont get insufficient funds error
     return smallestValue - (smallestValue * 0.012); // smallestValue * 0.9994
   }
@@ -104,8 +104,8 @@ class ArbitrageEngine {
       const opportunity = {};
       opportunity.lowestAsk2 = lowestAsk2;
       opportunity.highestBid1 = highestBid1;
-      console.log('opportunity: ');
-      console.log(opportunity);
+      // console.log('opportunity: ');
+      // console.log(opportunity);
       const amountToBuy = this.getAmountToBuy(
         lowestAsk2,
         highestBid1,
@@ -115,8 +115,8 @@ class ArbitrageEngine {
         orderbook1.exchangeName,
       );
 
-      console.log('amountToBuy: ');
-      console.log(amountToBuy);
+      // console.log('amountToBuy: ');
+      // console.log(amountToBuy);
 
       const smallestPrecision = Math.min(orderbook1.precision, orderbook2.precision);
 
@@ -158,8 +158,8 @@ class ArbitrageEngine {
       const opportunity = {};
       opportunity.lowestAsk1 = lowestAsk1;
       opportunity.highestBid2 = highestBid2;
-      console.log('opportunity: ');
-      console.log(opportunity);
+      // console.log('opportunity: ');
+      // console.log(opportunity);
       // take the lowest of the two quantities
       const amountToBuy = this.getAmountToBuy(
         lowestAsk1,
@@ -170,8 +170,8 @@ class ArbitrageEngine {
         orderbook2.exchangeName,
       );
 
-      console.log('amountToBuy: ');
-      console.log(amountToBuy);
+      // console.log('amountToBuy: ');
+      // console.log(amountToBuy);
 
       const smallestPrecision = Math.min(orderbook1.precision, orderbook2.precision);
 
@@ -240,8 +240,8 @@ class ArbitrageEngine {
   // }
 
   async executeOpportunity(opportunity) {
-    console.log('opportunity: ');
-    console.log(opportunity);
+    // this.logger.info('opportunity: ');
+    this.logger.info(JSON.stringify(opportunity));
     const { trades } = opportunity;
     const requestedTrades = await Promise.map(trades, async (trade) => {
       const {

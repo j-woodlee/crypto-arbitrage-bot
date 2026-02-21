@@ -14,10 +14,11 @@ const CHANNEL_NAMES = {
 
 class CoinbaseSubscriber {
   // https://docs.kraken.com/websockets/#message-book
-  constructor(exchangeProducts, secrets, logger) {
+  constructor(exchangeProducts, secrets, logger, onUpdate) {
     this.exchangeProducts = exchangeProducts;
     this.secrets = secrets;
     this.logger = logger;
+    this.onUpdate = onUpdate || null;
     this.exchangeProductSymbols = [];
     this.orderBooks = {};
     exchangeProducts.forEach((ep) => {
@@ -102,6 +103,9 @@ class CoinbaseSubscriber {
             });
             this.orderBooks[event.product_id].update(bids, asks);
             // this.logger.info(`Coinbase: ${event.product_id} Updated Orderbook`);
+            if (this.onUpdate) {
+              this.onUpdate(event.product_id, this.orderBooks[event.product_id]);
+            }
           }
         });
       } else {
