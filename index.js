@@ -132,8 +132,8 @@ const getAccountBalances = async (ccxtExchanges) => {
       }
     }
   });
-  console.log('accountBalances: ');
-  console.log(accountBalances);
+  // console.log('accountBalances: ');
+  // console.log(accountBalances);
   return accountBalances;
 };
 
