@@ -74,6 +74,15 @@ const initProtonDex = async (logger) => {
   return protonDex;
 };
 
+const fetchCoinbaseFeeSchedule = async (coinbase) => {
+  const fees = await coinbase.fetchTradingFees();
+  const takerRate = parseFloat(fees['BTC/USD'].info.fee_tier.taker_fee_rate);
+  return {
+    Coinbase: { taker: takerRate },
+    ProtonDex: { taker: 0 },
+  };
+};
+
 const initCoinbase = async () => {
   const coinbase = new ccxt.coinbase({
     apiKey: secrets.coinbaseApiKey2,
@@ -307,12 +316,28 @@ const getAccountBalances = async (ccxtExchanges) => {
     onCoinbaseUpdate,
   );
 
-  try {
-    const balances = await getAccountBalances([protonDex, coinbase]);
-    arbEngine.updateBalances(balances);
-  } catch (e) {
-    logger.error(`e.message: ${e.message}, e.code: ${e.code}, error fetching initial balances`);
-  }
+  const refreshBalances = async () => {
+    try {
+      const balances = await getAccountBalances([protonDex, coinbase]);
+      arbEngine.updateBalances(balances);
+      logger.info('Balance refresh complete');
+    } catch (e) {
+      logger.error(`e.message: ${e.message}, e.code: ${e.code}, error refreshing balances`);
+    }
+  };
+
+  const refreshFeeSchedule = async () => {
+    try {
+      const feeSchedule = await fetchCoinbaseFeeSchedule(coinbase);
+      arbEngine.updateFeeSchedule(feeSchedule);
+      logger.info(`Coinbase taker fee: ${feeSchedule.Coinbase.taker}`);
+    } catch (e) {
+      logger.error(`e.message: ${e.message}, e.code: ${e.code}, error refreshing Coinbase fee schedule`);
+    }
+  };
+
+  await refreshBalances();
+  await refreshFeeSchedule();
 
   await orderBookService.start();
   subscribers = orderBookService.getSubscribers();
@@ -320,13 +345,8 @@ const getAccountBalances = async (ccxtExchanges) => {
   const BALANCE_REFRESH_INTERVAL_MS = 30000;
   setInterval(async () => {
     if (isExecuting) return;
-    try {
-      const balances = await getAccountBalances([protonDex, coinbase]);
-      arbEngine.updateBalances(balances);
-      logger.info('Background balance refresh complete');
-    } catch (e) {
-      logger.error(`e.message: ${e.message}, e.code: ${e.code}, error refreshing balances`);
-    }
+    await refreshBalances();
+    await refreshFeeSchedule();
   }, BALANCE_REFRESH_INTERVAL_MS);
 
   logger.info('Event-driven arbitrage engine running...');

@@ -1,6 +1,5 @@
 /* eslint-disable max-len */
 const Promise = require('bluebird');
-const FEE_SCHEDULE = require('./feeSchedule');
 
 const toFixedNumber = (num, digits, base) => {
   const pow = (base ?? 10) ** digits;
@@ -11,6 +10,14 @@ class ArbitrageEngine {
   constructor(ccxtExchanges, logger) {
     this.ccxtExchanges = ccxtExchanges;
     this.logger = logger;
+    this.feeSchedule = {
+      Coinbase: { taker: 0.012 },
+      ProtonDex: { taker: 0 },
+    };
+  }
+
+  updateFeeSchedule(feeSchedule) {
+    this.feeSchedule = feeSchedule;
   }
 
   balanceBigEnough(opportunity) {
@@ -210,7 +217,7 @@ class ArbitrageEngine {
     let totalFeesInCounterCurrency = 0;
     opportunity.trades.forEach((trade) => {
       const feeInCounterCurrency = trade.amountCounterCurrency
-        * FEE_SCHEDULE[trade.exchangeName].taker;
+        * this.feeSchedule[trade.exchangeName].taker;
       totalFeesInCounterCurrency += feeInCounterCurrency;
     });
 
