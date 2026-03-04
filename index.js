@@ -1,6 +1,5 @@
-/* eslint-disable no-constant-condition */
-/* eslint-disable no-continue */
-/* eslint-disable no-await-in-loop */
+const fs = require('fs');
+const path = require('path');
 const { default: Logger } = require('@metalpay/metal-nebula-logger');
 const { default: metalCcxt } = require('@metalpay/metal-ccxt-lib');
 const ccxt = require('ccxt');
@@ -28,7 +27,38 @@ const chainUrlsProd = [
 //   'https://test.proton.eosusa.news',
 // ];
 
-const TIME_DELAY_MS = 5000;
+const OPPORTUNITY_CSV_PATH = path.join(__dirname, 'executed_opportunities.csv');
+
+const writeOpportunityToCsv = (opportunity) => {
+  const fileExists = fs.existsSync(OPPORTUNITY_CSV_PATH);
+  if (!fileExists) {
+    const header = 'timestamp,buy_exchange,buy_symbol,buy_side,buy_amount,'
+      + 'buy_price,buy_amount_counter,sell_exchange,sell_symbol,'
+      + 'sell_side,sell_amount,sell_price,sell_amount_counter,net_profit\n';
+    fs.writeFileSync(OPPORTUNITY_CSV_PATH, header);
+  }
+
+  const buyTrade = opportunity.trades.find((t) => t.side === 'buy');
+  const sellTrade = opportunity.trades.find((t) => t.side === 'sell');
+  const row = [
+    new Date().toISOString(),
+    buyTrade.exchangeName,
+    buyTrade.symbol,
+    buyTrade.side,
+    buyTrade.amount,
+    buyTrade.price,
+    buyTrade.amountCounterCurrency,
+    sellTrade.exchangeName,
+    sellTrade.symbol,
+    sellTrade.side,
+    sellTrade.amount,
+    sellTrade.price,
+    sellTrade.amountCounterCurrency,
+    opportunity.profit,
+  ].join(',');
+
+  fs.appendFileSync(OPPORTUNITY_CSV_PATH, `${row}\n`);
+};
 
 const initProtonDex = async (logger) => {
   const protonDex = new metalCcxt.ProtonDexV2({
@@ -42,6 +72,15 @@ const initProtonDex = async (logger) => {
   await protonDex.loadMarkets();
 
   return protonDex;
+};
+
+const fetchCoinbaseFeeSchedule = async (coinbase) => {
+  const fees = await coinbase.fetchTradingFees();
+  const takerRate = parseFloat(fees['BTC/USD'].info.fee_tier.taker_fee_rate);
+  return {
+    Coinbase: { taker: takerRate },
+    ProtonDex: { taker: 0 },
+  };
 };
 
 const initCoinbase = async () => {
@@ -82,7 +121,7 @@ const initCoinbase = async () => {
 
 const getAccountBalances = async (ccxtExchanges) => {
   const accountBalances = {};
-  await Promise.each(ccxtExchanges, async (exchange) => {
+  await Promise.map(ccxtExchanges, async (exchange) => {
     let exchangeName = exchange.name;
     if (exchangeName === 'Coinbase Advanced') {
       exchangeName = 'Coinbase';
@@ -98,8 +137,8 @@ const getAccountBalances = async (ccxtExchanges) => {
       }
     }
   });
-  console.log('accountBalances: ');
-  console.log(accountBalances);
+  // console.log('accountBalances: ');
+  // console.log(accountBalances);
   return accountBalances;
 };
 
@@ -198,23 +237,7 @@ const getAccountBalances = async (ccxtExchanges) => {
 
   const protonDex = await initProtonDex(logger);
   const coinbase = await initCoinbase();
-  // const accountBalances = await getAccountBalances([protonDex, coinbase]);
-  const orderBookService = new OrderBookService(
-    coinbaseExchangeProducts,
-    secrets,
-    logger,
-  );
-  // const averageBTCPurchasePrice = await getAveragePurchasePrice(coinbase, 'BTC-USD');
-  // console.log('averageBTCPurchasePrice on coinbase: ');
-  // console.log(averageBTCPurchasePrice);
 
-  // const averageETHPurchasePrice = await getAveragePurchasePrice(coinbase, 'ETH-USD');
-
-  // console.log('averageETHPurchasePrice on coinbase: ');
-  // console.log(averageETHPurchasePrice);
-
-  await orderBookService.start();
-  const subscribers = orderBookService.getSubscribers();
   const arbEngine = new ArbitrageEngine(
     {
       ProtonDex: protonDex,
@@ -224,88 +247,107 @@ const getAccountBalances = async (ccxtExchanges) => {
   );
 
   const protonDexSubscriber = new ProtonDexSubscriber(protonDexExchangeProducts, logger);
+  await protonDexSubscriber.start();
+
+  let isExecuting = false;
   let liveCheck = null;
-  while (true) {
-    try {
-      const balances = await getAccountBalances([protonDex, coinbase]);
-      arbEngine.updateBalances(balances);
-    } catch (e) {
-      logger.error(`e.message: ${e.message}, e.code: ${e.code},
-        error fetching balances, trying again...`);
-      await new Promise((r) => { setTimeout(r, 1000); }); // wait 1 second to try again
-      continue;
-    }
-    // logger.info(`arbEngine.accountBalances: ${JSON.stringify(arbEngine.accountBalances, null, 2)}`);
+  let subscribers;
+  let orderBookService;
+
+  const onCoinbaseUpdate = async (productId, coinbaseOrderbook) => {
+    if (isExecuting) return;
+
+    if (!orderBookService.orderbooksInitialized()) return;
+
     if (!liveCheck || moment(liveCheck.lastCheck).isBefore(moment().subtract('1', 'minutes'))) {
       liveCheck = orderBookService.checkOrderBooks();
       logger.info(`liveCheck: ${JSON.stringify(liveCheck)}`);
       if (liveCheck.unresponsiveOrderbookCount > 0) {
         await orderBookService.restartAllWs();
+        return;
       }
     }
-    // somewhere in the code we wanted to induce an orderbook restart
-    // if (subscribers.ProtonDex.shouldRestart) {
-    //   logger.info('MANUAL RESTART ProtonDex');
-    //   await orderBookService.restartWs(['ProtonDex']);
-    //   liveCheck = false;
-    //   continue;
-    // }
+
     if (subscribers.Coinbase.shouldRestart) {
       logger.info('MANUAL RESTART Coinbase');
       await orderBookService.restartWs(['Coinbase']);
-      liveCheck = false;
-      continue;
+      liveCheck = null;
+      return;
     }
 
-    if (!subscribers.Coinbase.websocketsOpen()) {
-      logger.info('Coinbase websockets not open');
-      continue;
-    }
+    if (productId === 'BTC-USD') {
+      const protonDexBtcOrderbook = protonDexSubscriber.orderBooks.XBTC_XMD;
+      if (!protonDexBtcOrderbook || !protonDexBtcOrderbook.initialized) {
+        logger.info('protonDexBtcOrderbook not initialized, skipping this coinbase update');
+        return;
+      }
+      if (!protonDexBtcOrderbook.updatedAt || moment().diff(protonDexBtcOrderbook.updatedAt, 'milliseconds') > 2000) {
+        logger.warn(`protonDexBtcOrderbook is stale (last updated: ${protonDexBtcOrderbook.updatedAt}), skipping`);
+        return;
+      }
 
-    if (!orderBookService.orderbooksInitialized()) {
-      logger.info('Orderbooks not initialized');
-      continue;
-    }
+      const opportunityBtc = arbEngine.findOpportunity(coinbaseOrderbook, protonDexBtcOrderbook);
 
-    const protonDexBtcOrderbook = await protonDexSubscriber.updateAndGetOrderbook(protonDexExchangeProducts[0]);
-    const opportunityBtc = arbEngine.findOpportunity(
-      subscribers.Coinbase.orderBooks['BTC-USD'],
-      protonDexBtcOrderbook,
-    );
-
-    if (opportunityBtc) {
-      console.log('opportunityBtc: ');
-      console.log(opportunityBtc);
-      await arbEngine.executeOpportunity(opportunityBtc);
-      try {
-        const balances = await getAccountBalances([protonDex, coinbase]);
-        arbEngine.updateBalances(balances);
-      } catch (e) {
-        logger.error(`e.message: ${e.message}, e.code: ${e.code},
-        error fetching balances after BTC opportunity execution`);
-        continue;
+      if (opportunityBtc) {
+        isExecuting = true;
+        // console.log('opportunityBtc: ');
+        // console.log(opportunityBtc);
+        try {
+          // console.log('would execute opportunity here');
+          await arbEngine.executeOpportunity(opportunityBtc);
+          writeOpportunityToCsv(opportunityBtc);
+          await protonDexSubscriber.restart();
+          const balances = await getAccountBalances([protonDex, coinbase]);
+          arbEngine.updateBalances(balances);
+        } catch (e) {
+          logger.error(`e.message: ${e.message}, e.code: ${e.code}, error executing BTC opportunity`);
+        } finally {
+          isExecuting = false;
+        }
       }
     }
+    logger.debug('------------------------------------------------');
+  };
 
-    // const protonDexEthOrderbook = await protonDexSubscriber.updateAndGetOrderbook(protonDexExchangeProducts[1]);
-    // const opportunityEth = arbEngine.findOpportunity(
-    //   subscribers.Coinbase.orderBooks['ETH-USD'],
-    //   protonDexEthOrderbook,
-    // );
+  orderBookService = new OrderBookService(
+    coinbaseExchangeProducts,
+    secrets,
+    logger,
+    onCoinbaseUpdate,
+  );
 
-    // if (opportunityEth) {
-    //   await arbEngine.executeOpportunity(opportunityEth);
-    //   try {
-    //     const balances = await getAccountBalances([protonDex, coinbase]);
-    //     arbEngine.updateBalances(balances);
-    //   } catch (e) {
-    //     logger.error(`e.message: ${e.message}, e.code: ${e.code},
-    //     error fetching balances after ETH opportunity execution`);
-    //     continue;
-    //   }
-    // }
+  const refreshBalances = async () => {
+    try {
+      const balances = await getAccountBalances([protonDex, coinbase]);
+      arbEngine.updateBalances(balances);
+      logger.info('Balance refresh complete');
+    } catch (e) {
+      logger.error(`e.message: ${e.message}, e.code: ${e.code}, error refreshing balances`);
+    }
+  };
 
-    logger.info(`next checking for opportunities in ${TIME_DELAY_MS / 1000} seconds...\n\n\n\n`);
-    await new Promise((r) => { setTimeout(r, TIME_DELAY_MS); });
-  }
+  const refreshFeeSchedule = async () => {
+    try {
+      const feeSchedule = await fetchCoinbaseFeeSchedule(coinbase);
+      arbEngine.updateFeeSchedule(feeSchedule);
+      logger.info(`Coinbase taker fee: ${feeSchedule.Coinbase.taker}`);
+    } catch (e) {
+      logger.error(`e.message: ${e.message}, e.code: ${e.code}, error refreshing Coinbase fee schedule`);
+    }
+  };
+
+  await refreshBalances();
+  await refreshFeeSchedule();
+
+  await orderBookService.start();
+  subscribers = orderBookService.getSubscribers();
+
+  const BALANCE_REFRESH_INTERVAL_MS = 30000;
+  setInterval(async () => {
+    if (isExecuting) return;
+    await refreshBalances();
+    await refreshFeeSchedule();
+  }, BALANCE_REFRESH_INTERVAL_MS);
+
+  logger.info('Event-driven arbitrage engine running...');
 })();

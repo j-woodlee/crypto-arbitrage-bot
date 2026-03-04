@@ -6,10 +6,11 @@ const {
 } = require('./subscribers');
 
 class OrderBookService {
-  constructor(exchangeProducts, secrets, logger) {
+  constructor(exchangeProducts, secrets, logger, onCoinbaseUpdate) {
     this.exchangeProducts = exchangeProducts;
     this.logger = logger;
     this.secrets = secrets;
+    this.onCoinbaseUpdate = onCoinbaseUpdate || null;
 
     this.subscribers = {};
   }
@@ -40,6 +41,7 @@ class OrderBookService {
           [exchangeProduct],
           this.secrets,
           this.logger,
+          this.onCoinbaseUpdate,
         );
       case 'ProtonDex':
         if (this.subscribers.ProtonDex) {
