@@ -1,7 +1,7 @@
 {
   "name": "proton_dex_arbitrage",
   "version": "1.0.0",
-  "description": "arbitrage between coinbase and proton dex",
+  "description": "arbitrage between kraken and proton dex",
   "main": "index.js",
   "scripts": {
     "start": "node ./index.js",

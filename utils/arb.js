@@ -11,7 +11,7 @@ class ArbitrageEngine {
     this.ccxtExchanges = ccxtExchanges;
     this.logger = logger;
     this.feeSchedule = {
-      Coinbase: { taker: 0.012 },
+      Kraken: { taker: 0.004 },
       ProtonDex: { taker: 0 },
     };
   }
@@ -227,7 +227,7 @@ class ArbitrageEngine {
 
     const profit = toFixedNumber(revenueInCounterCurrency - totalFeesInCounterCurrency, 6, 10); // round to XMD max precision
     // this.logger.info(`profit: ${profit} ${opportunity.trades[1].counterCurrency}`);
-    if (profit > 0.000001) { // coinbase max precision is 8 for USD, XMD is 6. We take all profit greater than XMD's smallest unit
+    if (profit > 0.0001) { // kraken max precision is 4 for USD, XMD is 6. We take all profit greater than USD's smallest unit
       // eslint-disable-next-line no-param-reassign
       opportunity.profit = profit;
       return true;
@@ -254,11 +254,9 @@ class ArbitrageEngine {
 
       const exchange = this.ccxtExchanges[trade.exchangeName];
       let order;
-      if (trade.exchangeName === 'Coinbase') {
-        const params = {
-          post_only: false,
-        };
-        this.logger.info(`executing Coinbase order ${symbol}, ${type}, ${side}, ${amountToSend}, ${priceToSend}, ${JSON.stringify(params)}`);
+      if (trade.exchangeName === 'Kraken') {
+        const params = {};
+        this.logger.info(`executing Kraken order ${symbol}, ${type}, ${side}, ${amountToSend}, ${priceToSend}, ${JSON.stringify(params)}`);
         order = await exchange
           .createOrder(
             symbol,
@@ -305,17 +303,17 @@ class ArbitrageEngine {
     return true;
   }
 
-  static putCoinbaseTradesFirst(trades) {
+  static putKrakenTradesFirst(trades) {
     return trades.sort((a, b) => {
       if (a.exchangeName === b.exchangeName) {
         return 0;
       }
 
-      if (a.exchangeName === 'Coinbase' && b.exchangeName !== 'Coinbase') {
+      if (a.exchangeName === 'Kraken' && b.exchangeName !== 'Kraken') {
         return -1;
       }
 
-      if (a.exchangeName !== 'Coinbase' && b.exchangeName === 'Coinbase') {
+      if (a.exchangeName !== 'Kraken' && b.exchangeName === 'Kraken') {
         return 1;
       }
       throw new Error('impossible array values');
@@ -327,24 +325,24 @@ module.exports = ArbitrageEngine;
 
 // bid is what people are willing to pay for the asset
 // ask is what people are willing to sell the asset for
-// get coinbase 'best' price levels, highest bid and lowest ask
+// get kraken 'best' price levels, highest bid and lowest ask
 // get proton dex 'best' price levels, highest bid and lowest ask
-// if lowestCoinbaseAskPrice < highestProtonDexBidPrice, {
+// if lowestKrakenAskPrice < highestProtonDexBidPrice, {
 //
 // }
 // example:
-// someone is willing to sell x BTC @ $1000 price on coinbase (ask)
+// someone is willing to sell x BTC @ $1000 price on kraken (ask)
 // someone is willing to buy y BTC @ $1001 price on proton dex (bid)
-// buy y BTC on coinbase, once filled, sell y BTC on proton dex @$1001
+// buy y BTC on kraken, once filled, sell y BTC on proton dex @$1001
 
-// if lowestProtonDexAskPrice < highestcoinBaseBidPrice, {
+// if lowestProtonDexAskPrice < highestKrakenBidPrice, {
 //
 // }
 // example:
 // someone is willing to sell x BTC @ $1000 price on protondex (ask)
-// someone is willing to buy y BTC @ $1001 price on coinbase (bid)
-// buy y BTC on protondex, once filled, sell y BTC on coinbase @$1001
+// someone is willing to buy y BTC @ $1001 price on kraken (bid)
+// buy y BTC on protondex, once filled, sell y BTC on kraken @$1001
 
-// note: we will prefer arbitrage opporunities that require a BUY/SELL on coinbase first
+// note: we will prefer arbitrage opporunities that require a BUY/SELL on kraken first
 // because it is much more active and the opportunity on proton dex
 // will likely stay there for awhile

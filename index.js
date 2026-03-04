@@ -74,22 +74,19 @@ const initProtonDex = async (logger) => {
   return protonDex;
 };
 
-const fetchCoinbaseFeeSchedule = async (coinbase) => {
-  const fees = await coinbase.fetchTradingFees();
-  const takerRate = parseFloat(fees['BTC/USD'].info.fee_tier.taker_fee_rate);
-  return {
-    Coinbase: { taker: takerRate },
-    ProtonDex: { taker: 0 },
-  };
-};
+const fetchFeeSchedule = async () => ({
+  Kraken: { taker: 0.004 },
+  ProtonDex: { taker: 0 },
+});
 
-const initCoinbase = async () => {
-  const coinbase = new ccxt.coinbase({
-    apiKey: secrets.coinbaseApiKey2,
-    secret: secrets.coinbaseApiSecret2,
+const initKraken = async () => {
+  // eslint-disable-next-line new-cap
+  const kraken = new ccxt.kraken({
+    apiKey: secrets.krakenApiKey,
+    secret: secrets.krakenApiSecret,
   });
-  await coinbase.loadMarkets();
-  return coinbase;
+  await kraken.loadMarkets();
+  return kraken;
 };
 
 // const getAccountBalances = async (ccxtExchanges) => {
@@ -122,18 +119,25 @@ const initCoinbase = async () => {
 const getAccountBalances = async (ccxtExchanges) => {
   const accountBalances = {};
   await Promise.map(ccxtExchanges, async (exchange) => {
-    let exchangeName = exchange.name;
-    if (exchangeName === 'Coinbase Advanced') {
-      exchangeName = 'Coinbase';
-    }
+    const exchangeName = exchange.name;
     accountBalances[exchangeName] = {};
-    const accounts = await exchange.fetchAccounts();
-    // eslint-disable-next-line no-restricted-syntax
-    for (const account of accounts) {
-      if (account.type === 'wallet') {
-        const balance = account.info.available_balance;
-        balance.value = parseFloat(balance.value);
-        accountBalances[exchangeName][account.code] = balance;
+    if (exchangeName === 'Kraken') {
+      const balances = await exchange.fetchBalance();
+      // eslint-disable-next-line no-restricted-syntax
+      for (const [code, bal] of Object.entries(balances.free)) {
+        if (bal > 0) {
+          accountBalances[exchangeName][code] = { value: parseFloat(bal) };
+        }
+      }
+    } else {
+      const accounts = await exchange.fetchAccounts();
+      // eslint-disable-next-line no-restricted-syntax
+      for (const account of accounts) {
+        if (account.type === 'wallet') {
+          const balance = account.info.available_balance;
+          balance.value = parseFloat(balance.value);
+          accountBalances[exchangeName][account.code] = balance;
+        }
       }
     }
   });
@@ -170,10 +174,10 @@ const getAccountBalances = async (ccxtExchanges) => {
 
 (async () => {
   const logger = Logger('arb bot');
-  const coinbaseExchangeProducts = [
+  const krakenExchangeProducts = [
     {
-      exchangeName: 'Coinbase',
-      localSymbol: 'BTC-USD',
+      exchangeName: 'Kraken',
+      localSymbol: 'BTC/USD',
       product: {
         counterProductPrecision: 6,
       },
@@ -181,26 +185,6 @@ const getAccountBalances = async (ccxtExchanges) => {
       counterCurrency: 'USD',
       precision: 8,
     },
-    // {
-    //   exchangeName: 'Coinbase',
-    //   localSymbol: 'ETH-USD',
-    //   product: {
-    //     counterProductPrecision: 6,
-    //   },
-    //   baseCurrency: 'ETH',
-    //   counterCurrency: 'USD',
-    //   precision: 7,
-    // },
-    // {
-    //   exchangeName: 'Coinbase',
-    //   localSymbol: 'MTL-USD',
-    //   product: {
-    //     counterProductPrecision: 6,
-    //   },
-    //   baseCurrency: 'MTL',
-    //   counterCurrency: 'USD',
-    //   precision: 2,
-    // },
   ];
 
   const protonDexExchangeProducts = [{
@@ -236,12 +220,12 @@ const getAccountBalances = async (ccxtExchanges) => {
   ];
 
   const protonDex = await initProtonDex(logger);
-  const coinbase = await initCoinbase();
+  const kraken = await initKraken();
 
   const arbEngine = new ArbitrageEngine(
     {
       ProtonDex: protonDex,
-      Coinbase: coinbase,
+      Kraken: kraken,
     },
     logger,
   );
@@ -250,35 +234,17 @@ const getAccountBalances = async (ccxtExchanges) => {
   await protonDexSubscriber.start();
 
   let isExecuting = false;
-  let liveCheck = null;
-  let subscribers;
   let orderBookService;
 
-  const onCoinbaseUpdate = async (productId, coinbaseOrderbook) => {
+  const onKrakenUpdate = async (productId, krakenOrderbook) => {
     if (isExecuting) return;
 
     if (!orderBookService.orderbooksInitialized()) return;
 
-    if (!liveCheck || moment(liveCheck.lastCheck).isBefore(moment().subtract('1', 'minutes'))) {
-      liveCheck = orderBookService.checkOrderBooks();
-      logger.info(`liveCheck: ${JSON.stringify(liveCheck)}`);
-      if (liveCheck.unresponsiveOrderbookCount > 0) {
-        await orderBookService.restartAllWs();
-        return;
-      }
-    }
-
-    if (subscribers.Coinbase.shouldRestart) {
-      logger.info('MANUAL RESTART Coinbase');
-      await orderBookService.restartWs(['Coinbase']);
-      liveCheck = null;
-      return;
-    }
-
-    if (productId === 'BTC-USD') {
+    if (productId === 'BTC/USD') {
       const protonDexBtcOrderbook = protonDexSubscriber.orderBooks.XBTC_XMD;
       if (!protonDexBtcOrderbook || !protonDexBtcOrderbook.initialized) {
-        logger.info('protonDexBtcOrderbook not initialized, skipping this coinbase update');
+        logger.info('protonDexBtcOrderbook not initialized, skipping this kraken update');
         return;
       }
       if (!protonDexBtcOrderbook.updatedAt || moment().diff(protonDexBtcOrderbook.updatedAt, 'milliseconds') > 2000) {
@@ -286,18 +252,15 @@ const getAccountBalances = async (ccxtExchanges) => {
         return;
       }
 
-      const opportunityBtc = arbEngine.findOpportunity(coinbaseOrderbook, protonDexBtcOrderbook);
+      const opportunityBtc = arbEngine.findOpportunity(krakenOrderbook, protonDexBtcOrderbook);
 
       if (opportunityBtc) {
         isExecuting = true;
-        // console.log('opportunityBtc: ');
-        // console.log(opportunityBtc);
         try {
-          // console.log('would execute opportunity here');
-          await arbEngine.executeOpportunity(opportunityBtc);
+          // await arbEngine.executeOpportunity(opportunityBtc);
           writeOpportunityToCsv(opportunityBtc);
           await protonDexSubscriber.restart();
-          const balances = await getAccountBalances([protonDex, coinbase]);
+          const balances = await getAccountBalances([protonDex, kraken]);
           arbEngine.updateBalances(balances);
         } catch (e) {
           logger.error(`e.message: ${e.message}, e.code: ${e.code}, error executing BTC opportunity`);
@@ -310,15 +273,15 @@ const getAccountBalances = async (ccxtExchanges) => {
   };
 
   orderBookService = new OrderBookService(
-    coinbaseExchangeProducts,
+    krakenExchangeProducts,
     secrets,
     logger,
-    onCoinbaseUpdate,
+    onKrakenUpdate,
   );
 
   const refreshBalances = async () => {
     try {
-      const balances = await getAccountBalances([protonDex, coinbase]);
+      const balances = await getAccountBalances([protonDex, kraken]);
       arbEngine.updateBalances(balances);
       logger.info('Balance refresh complete');
     } catch (e) {
@@ -328,11 +291,11 @@ const getAccountBalances = async (ccxtExchanges) => {
 
   const refreshFeeSchedule = async () => {
     try {
-      const feeSchedule = await fetchCoinbaseFeeSchedule(coinbase);
+      const feeSchedule = await fetchFeeSchedule();
       arbEngine.updateFeeSchedule(feeSchedule);
-      logger.info(`Coinbase taker fee: ${feeSchedule.Coinbase.taker}`);
+      logger.info(`Kraken taker fee: ${feeSchedule.Kraken.taker}`);
     } catch (e) {
-      logger.error(`e.message: ${e.message}, e.code: ${e.code}, error refreshing Coinbase fee schedule`);
+      logger.error(`e.message: ${e.message}, e.code: ${e.code}, error refreshing fee schedule`);
     }
   };
 
@@ -340,7 +303,6 @@ const getAccountBalances = async (ccxtExchanges) => {
   await refreshFeeSchedule();
 
   await orderBookService.start();
-  subscribers = orderBookService.getSubscribers();
 
   const BALANCE_REFRESH_INTERVAL_MS = 30000;
   setInterval(async () => {

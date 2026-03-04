@@ -1,16 +1,16 @@
 const Promise = require('bluebird');
 const moment = require('moment');
 const {
-  CoinbaseSubscriber,
+  KrakenSubscriber,
   ProtonDexSubscriber,
 } = require('./subscribers');
 
 class OrderBookService {
-  constructor(exchangeProducts, secrets, logger, onCoinbaseUpdate) {
+  constructor(exchangeProducts, secrets, logger, onKrakenUpdate) {
     this.exchangeProducts = exchangeProducts;
     this.logger = logger;
     this.secrets = secrets;
-    this.onCoinbaseUpdate = onCoinbaseUpdate || null;
+    this.onKrakenUpdate = onKrakenUpdate || null;
 
     this.subscribers = {};
   }
@@ -32,16 +32,15 @@ class OrderBookService {
 
   constructOrderBookSubscriber(exchangeProduct) {
     switch (exchangeProduct.exchangeName) {
-      case 'Coinbase':
-        if (this.subscribers.Coinbase) {
-          this.subscribers.Coinbase.addProducts([exchangeProduct]);
+      case 'Kraken':
+        if (this.subscribers.Kraken) {
+          this.subscribers.Kraken.addProducts([exchangeProduct]);
           return null;
         }
-        return new CoinbaseSubscriber(
+        return new KrakenSubscriber(
           [exchangeProduct],
-          this.secrets,
           this.logger,
-          this.onCoinbaseUpdate,
+          this.onKrakenUpdate,
         );
       case 'ProtonDex':
         if (this.subscribers.ProtonDex) {

@@ -1,6 +1,6 @@
 const FEE_SCHEDULE = {
-  Coinbase: {
-    taker: 0.012,
+  Kraken: {
+    taker: 0.004,
   },
   ProtonDex: {
     taker: 0,

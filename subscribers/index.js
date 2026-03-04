@@ -1,7 +1,7 @@
-const CoinbaseSubscriber = require('./coinbase');
+const KrakenSubscriber = require('./kraken');
 const ProtonDexSubscriber = require('./protonDex');
 
 module.exports = {
-  CoinbaseSubscriber,
+  KrakenSubscriber,
   ProtonDexSubscriber,
 };
