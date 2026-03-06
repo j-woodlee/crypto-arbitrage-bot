@@ -34,7 +34,7 @@ const writeOpportunityToCsv = (opportunity) => {
   if (!fileExists) {
     const header = 'timestamp,buy_exchange,buy_symbol,buy_side,buy_amount,'
       + 'buy_price,buy_amount_counter,sell_exchange,sell_symbol,'
-      + 'sell_side,sell_amount,sell_price,sell_amount_counter,net_profit\n';
+      + 'sell_side,sell_amount,sell_price,sell_amount_counter,total_fees,net_profit\n';
     fs.writeFileSync(OPPORTUNITY_CSV_PATH, header);
   }
 
@@ -54,6 +54,7 @@ const writeOpportunityToCsv = (opportunity) => {
     sellTrade.amount,
     sellTrade.price,
     sellTrade.amountCounterCurrency,
+    opportunity.totalFees,
     opportunity.profit,
   ].join(',');
 
@@ -181,7 +182,7 @@ const getAccountBalances = async (ccxtExchanges) => {
       exchangeName: 'Kraken',
       localSymbol: 'BTC/USD',
       product: {
-        counterProductPrecision: 6,
+        counterProductPrecision: 4, // usd precision is 4 on kraken
       },
       baseCurrency: 'BTC',
       counterCurrency: 'USD',

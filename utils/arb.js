@@ -84,8 +84,8 @@ class ArbitrageEngine {
     );
     // console.log('smallestValue: ');
     // console.log(smallestValue);
-    // take 1.2% off just for the worse case taker order, so we dont get insufficient funds error
-    return smallestValue - (smallestValue * 0.012); // smallestValue * 0.9994
+    // take 0.4% off just for the worse case taker order, so we dont get insufficient funds error
+    return smallestValue - (smallestValue * 0.004); // smallestValue * 0.996
   }
 
   findOpportunity(orderbook1, orderbook2) {
@@ -216,10 +216,14 @@ class ArbitrageEngine {
     }
     let totalFeesInCounterCurrency = 0;
     opportunity.trades.forEach((trade) => {
-      const feeInCounterCurrency = trade.amountCounterCurrency
+      // round to 4 for kraken
+      const feeInCounterCurrency = toFixedNumber(trade.amountCounterCurrency, 4, 10)
         * this.feeSchedule[trade.exchangeName].taker;
       totalFeesInCounterCurrency += feeInCounterCurrency;
     });
+
+    // round totalfees to 4 decimal places (kraken max precision for USD)
+    // totalFeesInCounterCurrency = toFixedNumber(totalFeesInCounterCurrency, 4, 10);
 
     const revenueInCounterCurrency = Math.abs(
       opportunity.trades[0].amountCounterCurrency - opportunity.trades[1].amountCounterCurrency,
@@ -228,6 +232,8 @@ class ArbitrageEngine {
     const profit = toFixedNumber(revenueInCounterCurrency - totalFeesInCounterCurrency, 4, 10); // round to Kraken USD max precision of 4
     // this.logger.info(`profit: ${profit} ${opportunity.trades[1].counterCurrency}`);
     if (profit > 0.0001) { // kraken max precision is 4 for USD, XMD is 6. We take all profit greater than USD's smallest unit
+      // eslint-disable-next-line no-param-reassign
+      opportunity.totalFees = totalFeesInCounterCurrency;
       // eslint-disable-next-line no-param-reassign
       opportunity.profit = profit;
       return true;
