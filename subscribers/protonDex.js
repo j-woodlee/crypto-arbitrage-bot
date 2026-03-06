@@ -23,6 +23,7 @@ class ProtonDexSubscriber {
         ep.baseCurrency,
         ep.counterCurrency,
         ep.precision,
+        ep.product.counterProductPrecision,
       );
       const smartInterval = new SmartInterval(async () => {
         await this.initOrderbook(ep);
@@ -114,6 +115,7 @@ class ProtonDexSubscriber {
         ep.baseCurrency,
         ep.counterCurrency,
         ep.precision,
+        ep.product.counterProductPrecision,
       );
       const smartInterval = new SmartInterval(async () => {
         await this.initOrderbook(ep);

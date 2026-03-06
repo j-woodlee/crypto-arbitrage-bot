@@ -15,6 +15,7 @@ class KrakenSubscriber {
         ep.baseCurrency,
         ep.counterCurrency,
         ep.precision,
+        ep.product.counterProductPrecision,
       );
       this.exchangeProductSymbols.push(ep.localSymbol);
     });
@@ -61,6 +62,9 @@ class KrakenSubscriber {
           }
         });
       } else {
+        if (parsedData.channel === 'heartbeat') {
+          return;
+        }
         this.logger.info(`Kraken: parsedData: ${JSON.stringify(parsedData)}`);
       }
     });
@@ -125,6 +129,7 @@ class KrakenSubscriber {
         ep.baseCurrency,
         ep.counterCurrency,
         ep.precision,
+        ep.product.counterProductPrecision,
       );
       this.exchangeProductSymbols.push(ep.localSymbol);
       newSymbols.push(ep.localSymbol);

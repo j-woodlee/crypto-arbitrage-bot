@@ -126,7 +126,7 @@ class ArbitrageEngine {
         side: 'buy',
         amount: amountToBuyRounded, // in base currency
         price: buyPrice,
-        amountCounterCurrency: buyPrice * amountToBuyRounded,
+        amountCounterCurrency: toFixedNumber(buyPrice * amountToBuyRounded, orderbook2.counterCurrencyPrecision, 10),
         exchangeName: orderbook2.exchangeName,
         symbol: orderbook2.symbol,
         baseCurrency: orderbook2.baseCurrency,
@@ -136,7 +136,7 @@ class ArbitrageEngine {
         side: 'sell',
         amount: amountToBuyRounded,
         price: sellPrice,
-        amountCounterCurrency: sellPrice * amountToBuyRounded,
+        amountCounterCurrency: toFixedNumber(sellPrice * amountToBuyRounded, orderbook1.counterCurrencyPrecision, 10),
         exchangeName: orderbook1.exchangeName,
         symbol: orderbook1.symbol,
         baseCurrency: orderbook1.baseCurrency,
@@ -181,7 +181,7 @@ class ArbitrageEngine {
         side: 'buy',
         amount: amountToBuyRounded, // in base currency
         price: buyPrice,
-        amountCounterCurrency: buyPrice * amountToBuyRounded,
+        amountCounterCurrency: toFixedNumber(buyPrice * amountToBuyRounded, orderbook1.counterCurrencyPrecision, 10),
         exchangeName: orderbook1.exchangeName,
         symbol: orderbook1.symbol,
         baseCurrency: orderbook1.baseCurrency,
@@ -191,7 +191,7 @@ class ArbitrageEngine {
         side: 'sell',
         amount: amountToBuyRounded,
         price: sellPrice,
-        amountCounterCurrency: sellPrice * amountToBuyRounded,
+        amountCounterCurrency: toFixedNumber(sellPrice * amountToBuyRounded, orderbook2.counterCurrencyPrecision, 10),
         exchangeName: orderbook2.exchangeName,
         symbol: orderbook2.symbol,
         baseCurrency: orderbook2.baseCurrency,
@@ -217,13 +217,13 @@ class ArbitrageEngine {
     let totalFeesInCounterCurrency = 0;
     opportunity.trades.forEach((trade) => {
       // round to 4 for kraken
-      const feeInCounterCurrency = toFixedNumber(trade.amountCounterCurrency, 4, 10)
+      const feeInCounterCurrency = trade.amountCounterCurrency
         * this.feeSchedule[trade.exchangeName].taker;
       totalFeesInCounterCurrency += feeInCounterCurrency;
     });
 
     // round totalfees to 4 decimal places (kraken max precision for USD)
-    // totalFeesInCounterCurrency = toFixedNumber(totalFeesInCounterCurrency, 4, 10);
+    totalFeesInCounterCurrency = toFixedNumber(totalFeesInCounterCurrency, 4, 10);
 
     const revenueInCounterCurrency = Math.abs(
       opportunity.trades[0].amountCounterCurrency - opportunity.trades[1].amountCounterCurrency,
