@@ -123,6 +123,8 @@ const getAccountBalances = async (ccxtExchanges) => {
     accountBalances[exchangeName] = {};
     if (exchangeName === 'Kraken') {
       const balances = await exchange.fetchBalance();
+      console.log('balances: ');
+      console.log(balances);
       // eslint-disable-next-line no-restricted-syntax
       for (const [code, bal] of Object.entries(balances.free)) {
         if (bal > 0) {
@@ -141,8 +143,8 @@ const getAccountBalances = async (ccxtExchanges) => {
       }
     }
   });
-  // console.log('accountBalances: ');
-  // console.log(accountBalances);
+  console.log('accountBalances: ');
+  console.log(accountBalances);
   return accountBalances;
 };
 
@@ -257,9 +259,8 @@ const getAccountBalances = async (ccxtExchanges) => {
       if (opportunityBtc) {
         isExecuting = true;
         try {
-          // await arbEngine.executeOpportunity(opportunityBtc);
+          await arbEngine.executeOpportunity(opportunityBtc);
           writeOpportunityToCsv(opportunityBtc);
-          await protonDexSubscriber.restart();
           const balances = await getAccountBalances([protonDex, kraken]);
           arbEngine.updateBalances(balances);
         } catch (e) {

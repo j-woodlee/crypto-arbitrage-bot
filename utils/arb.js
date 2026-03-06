@@ -225,7 +225,7 @@ class ArbitrageEngine {
       opportunity.trades[0].amountCounterCurrency - opportunity.trades[1].amountCounterCurrency,
     );
 
-    const profit = toFixedNumber(revenueInCounterCurrency - totalFeesInCounterCurrency, 6, 10); // round to XMD max precision
+    const profit = toFixedNumber(revenueInCounterCurrency - totalFeesInCounterCurrency, 4, 10); // round to Kraken USD max precision of 4
     // this.logger.info(`profit: ${profit} ${opportunity.trades[1].counterCurrency}`);
     if (profit > 0.0001) { // kraken max precision is 4 for USD, XMD is 6. We take all profit greater than USD's smallest unit
       // eslint-disable-next-line no-param-reassign
@@ -255,7 +255,10 @@ class ArbitrageEngine {
       const exchange = this.ccxtExchanges[trade.exchangeName];
       let order;
       if (trade.exchangeName === 'Kraken') {
-        const params = {};
+        // oflags: 'fciq' — "Fee in quote currency." By default Kraken can deduct fees from the received currency, which can mess up your balance accounting. This flag forces fees to come from the quote (counter) currency.
+        // oflags: 'fcib' — "Fee in base currency." Same idea, opposite direction.
+        // timeInForce: 'IOC' (Immediate-Or-Cancel) — Fills as much as possible immediately and cancels the rest. Very useful for arb since you don't want a partially filled limit order sitting on the book if the opportunity vanishes.
+        const params = { oflags: 'fciq' };
         this.logger.info(`executing Kraken order ${symbol}, ${type}, ${side}, ${amountToSend}, ${priceToSend}, ${JSON.stringify(params)}`);
         order = await exchange
           .createOrder(
