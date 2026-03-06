@@ -38,27 +38,52 @@ class KrakenSubscriber {
     this.ws = new WebSocket(uri);
 
     this.ws.on('message', (data) => {
-      const parsedData = JSON.parse(data);
+      const rawStr = data.toString();
+      // Parse with string-preserved price/qty for checksum precision
+      const parsedData = KrakenSubscriber.parseWithStringNumbers(rawStr);
 
       if (parsedData.channel === 'book') {
         const { type } = parsedData;
         parsedData.data.forEach((event) => {
-          const { symbol } = event;
+          const { symbol, checksum } = event;
           if (!this.orderBooks[symbol]) {
             this.logger.warn(`Kraken: received event for unknown symbol ${symbol}, ignoring`);
             return;
           }
 
-          const bids = event.bids.map((b) => ({ price: b.price, qty: b.qty }));
-          const asks = event.asks.map((a) => ({ price: a.price, qty: a.qty }));
+          // price and qty are strings from parseWithStringNumbers
+          const mapEntry = (e) => ({
+            price: parseFloat(e.price),
+            qty: parseFloat(e.qty),
+            priceStr: e.price,
+            qtyStr: e.qty,
+          });
+          const bids = event.bids.map(mapEntry);
+          const asks = event.asks.map(mapEntry);
 
           if (type === 'snapshot') {
+            this.logger.info(`Kraken: initializing orderbook for ${symbol}`);
             this.orderBooks[symbol].init(bids, asks);
           } else if (type === 'update') {
             this.orderBooks[symbol].update(bids, asks);
-            if (this.onUpdate) {
-              this.onUpdate(symbol, this.orderBooks[symbol]);
+          }
+
+          if (checksum !== undefined) {
+            const localChecksum = this.orderBooks[symbol].calculateChecksum();
+            if (localChecksum !== checksum) {
+              this.logger.warn(
+                `Kraken: checksum mismatch for ${symbol} `
+                + `(local: ${localChecksum}, remote: ${checksum}), re-subscribing`,
+              );
+              this.unsubscribeToProducts([symbol]);
+              this.orderBooks[symbol].empty();
+              this.subscribeToProducts([symbol]);
+              return;
             }
+          }
+
+          if (type === 'update' && this.onUpdate) {
+            this.onUpdate(symbol, this.orderBooks[symbol]);
           }
         });
       } else {
@@ -104,6 +129,7 @@ class KrakenSubscriber {
       params: {
         channel: 'book',
         symbol: symbols,
+        depth: 10,
       },
     };
     this.ws.send(JSON.stringify(message));
@@ -118,6 +144,17 @@ class KrakenSubscriber {
       },
     };
     this.ws.send(JSON.stringify(message));
+  }
+
+  static parseWithStringNumbers(rawStr) {
+    // Convert numeric values for "price" and "qty" keys to strings in the raw JSON
+    // so that trailing zeros are preserved for checksum calculation.
+    // e.g. "price":0.10000000 -> "price":"0.10000000"
+    const stringified = rawStr.replace(
+      /"(price|qty)"\s*:\s*(-?[0-9]+\.?[0-9]*)/g,
+      '"$1":"$2"',
+    );
+    return JSON.parse(stringified);
   }
 
   addProducts(exchangeProducts) {

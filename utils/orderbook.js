@@ -1,6 +1,7 @@
 // const createTree = require('functional-red-black-tree')
 const { RBTree } = require('bintrees');
 const moment = require('moment');
+const CRC32 = require('crc-32');
 
 const smallestFirst = function (a, b) {
   return a.price - b.price;
@@ -9,18 +10,30 @@ const smallestFirst = function (a, b) {
 const largestFirst = function (a, b) {
   return b.price - a.price;
 };
-// entry = {qty: string, price: int}
+// entry = {qty: number, price: number, priceStr: string, qtyStr: string}
 const updateEntry = function (tree, entry) {
-  if (parseInt(entry.qty, 10) === 0) {
+  if (entry.qty === 0) {
     tree.remove(entry);
   } else {
-    const dataRef = tree.find(entry);
-    if (!dataRef) {
-      tree.insert(entry);
-    } else {
-      dataRef.qty = entry.qty;
+    const existing = tree.find(entry);
+    if (existing) {
+      tree.remove(existing);
     }
+    tree.insert(entry);
   }
+};
+
+const truncateTree = function (tree, depth) {
+  while (tree.size > depth) {
+    // max() returns the worst level: highest ask or lowest bid
+    const worst = tree.max();
+    tree.remove(worst);
+  }
+};
+
+// Kraken checksum formatting: remove decimal, strip leading zeros
+const formatForChecksum = function (str) {
+  return str.replace('.', '').replace(/^0+/, '');
 };
 
 class OrderBook {
@@ -36,6 +49,7 @@ class OrderBook {
     // counter currency precision
     this.counterCurrencyPrecision = counterCurrencyPrecision;
     this.initialized = false;
+    this.depth = 10;
   }
 
   init(bids, asks) {
@@ -66,6 +80,40 @@ class OrderBook {
     asks.forEach((ask) => {
       updateEntry(this.asks, ask);
     });
+    truncateTree(this.bids, this.depth);
+    truncateTree(this.asks, this.depth);
+  }
+
+  calculateChecksum() {
+    // asks: sorted low to high (smallestFirst tree, iterate forward)
+    const askEntries = [];
+    const asksIt = this.asks.iterator();
+    let askNode = asksIt.next();
+    while (askNode !== null && askEntries.length < 10) {
+      askEntries.push(askNode);
+      askNode = asksIt.next();
+    }
+
+    // bids: sorted high to low (largestFirst tree, iterate forward)
+    const bidEntries = [];
+    const bidsIt = this.bids.iterator();
+    let bidNode = bidsIt.next();
+    while (bidNode !== null && bidEntries.length < 10) {
+      bidEntries.push(bidNode);
+      bidNode = bidsIt.next();
+    }
+
+    let checksumStr = '';
+    askEntries.forEach((entry) => {
+      checksumStr += formatForChecksum(entry.priceStr) + formatForChecksum(entry.qtyStr);
+    });
+    bidEntries.forEach((entry) => {
+      checksumStr += formatForChecksum(entry.priceStr) + formatForChecksum(entry.qtyStr);
+    });
+
+    // CRC32 returns signed int, convert to unsigned 32-bit
+    // eslint-disable-next-line no-bitwise
+    return CRC32.str(checksumStr) >>> 0;
   }
 
   isEmpty() {

@@ -101,8 +101,12 @@ class ProtonDexSubscriber {
       return;
     }
 
-    const bids = snapshot.data.bids.map((bid) => ({ price: bid.level, qty: bid.bid }));
-    const asks = snapshot.data.asks.map((ask) => ({ price: ask.level, qty: ask.bid }));
+    const bids = snapshot.data.bids.map((bid) => ({
+      price: bid.level, qty: bid.bid, priceStr: String(bid.level), qtyStr: String(bid.bid),
+    }));
+    const asks = snapshot.data.asks.map((ask) => ({
+      price: ask.level, qty: ask.bid, priceStr: String(ask.level), qtyStr: String(ask.bid),
+    }));
     this.orderBooks[ep.localSymbol].init(bids, asks);
     // this.logger.warn(`${this.name} ${ep.localSymbol}: Updated Orderbook`);
   }
