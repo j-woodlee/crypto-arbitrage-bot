@@ -267,6 +267,7 @@ const getAccountBalances = async (ccxtExchanges) => {
           arbEngine.updateBalances(balances);
         } catch (e) {
           logger.error(`e.message: ${e.message}, e.code: ${e.code}, error executing BTC opportunity`);
+          throw e;
         } finally {
           isExecuting = false;
         }

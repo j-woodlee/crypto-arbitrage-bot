@@ -85,7 +85,11 @@ class ArbitrageEngine {
     // console.log('smallestValue: ');
     // console.log(smallestValue);
     // take 0.4% off just for the worse case taker order, so we dont get insufficient funds error
-    return smallestValue - (smallestValue * 0.004); // smallestValue * 0.996
+    const amount = smallestValue - (smallestValue * 0.004); // smallestValue * 0.996
+    if (amount < 0.0001) { // minimum kraken btc size is 0.0001
+      return 0;
+    }
+    return amount;
   }
 
   findOpportunity(orderbook1, orderbook2) {
