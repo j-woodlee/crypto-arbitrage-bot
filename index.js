@@ -240,11 +240,27 @@ const getAccountBalances = async (ccxtExchanges) => {
   const protonDexSubscriber = new ProtonDexSubscriber(protonDexExchangeProducts, logger);
   await protonDexSubscriber.start();
 
+  let balancesReady = false;
+
+  const refreshBalances = async () => {
+    try {
+      const balances = await getAccountBalances([protonDex, kraken]);
+      arbEngine.updateBalances(balances);
+      balancesReady = true;
+      logger.info('Balance refresh complete');
+    } catch (e) {
+      balancesReady = false;
+      logger.error(`e.message: ${e.message}, e.code: ${e.code}, error refreshing balances`);
+    }
+  };
+
   let isExecuting = false;
   let orderBookService;
 
   const onKrakenUpdate = async (productId, krakenOrderbook) => {
     if (isExecuting) return;
+
+    if (!balancesReady) return;
 
     if (!orderBookService.orderbooksInitialized()) return;
 
@@ -267,10 +283,7 @@ const getAccountBalances = async (ccxtExchanges) => {
         try {
           const executed = await arbEngine.executeOpportunity(opportunityBtc);
           writeOpportunityToCsv(opportunityBtc, executed);
-          if (executed) {
-            const balances = await getAccountBalances([protonDex, kraken]);
-            arbEngine.updateBalances(balances);
-          }
+          await refreshBalances();
         } catch (e) {
           logger.error(`e.message: ${e.message}, e.code: ${e.code}, error executing BTC opportunity`);
           throw e;
@@ -288,16 +301,6 @@ const getAccountBalances = async (ccxtExchanges) => {
     logger,
     onKrakenUpdate,
   );
-
-  const refreshBalances = async () => {
-    try {
-      const balances = await getAccountBalances([protonDex, kraken]);
-      arbEngine.updateBalances(balances);
-      logger.info('Balance refresh complete');
-    } catch (e) {
-      logger.error(`e.message: ${e.message}, e.code: ${e.code}, error refreshing balances`);
-    }
-  };
 
   const refreshFeeSchedule = async () => {
     try {
