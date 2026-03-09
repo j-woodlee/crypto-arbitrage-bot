@@ -248,11 +248,11 @@ const getAccountBalances = async (ccxtExchanges) => {
     if (productId === 'BTC/USD') {
       const protonDexBtcOrderbook = protonDexSubscriber.orderBooks.XBTC_XMD;
       if (!protonDexBtcOrderbook || !protonDexBtcOrderbook.initialized) {
-        logger.info('protonDexBtcOrderbook not initialized, skipping this kraken update');
+        // logger.info('protonDexBtcOrderbook not initialized, skipping this kraken update');
         return;
       }
       if (!protonDexBtcOrderbook.updatedAt || moment().diff(protonDexBtcOrderbook.updatedAt, 'milliseconds') > 1400) {
-        logger.warn(`protonDexBtcOrderbook is stale (last updated: ${protonDexBtcOrderbook.updatedAt}), skipping`);
+        // logger.warn(`protonDexBtcOrderbook is stale (last updated: ${protonDexBtcOrderbook.updatedAt}), skipping`);
         return;
       }
 
