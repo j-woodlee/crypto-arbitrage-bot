@@ -34,8 +34,8 @@ const writeOpportunityToCsv = (opportunity, executed) => {
   const fileExists = fs.existsSync(OPPORTUNITY_CSV_PATH);
   if (!fileExists) {
     const header = 'timestamp,executed,buy_exchange,buy_symbol,buy_side,buy_amount,'
-      + 'buy_price,buy_amount_counter,buy_fee,sell_exchange,sell_symbol,'
-      + 'sell_side,sell_amount,sell_price,sell_amount_counter,sell_fee,total_fees,net_profit\n';
+      + 'buy_price,buy_amount_counter,sell_exchange,sell_symbol,'
+      + 'sell_side,sell_amount,sell_price,sell_amount_counter,total_fees,net_profit\n';
     fs.writeFileSync(OPPORTUNITY_CSV_PATH, header);
   }
 
@@ -50,14 +50,12 @@ const writeOpportunityToCsv = (opportunity, executed) => {
     buyTrade.amount,
     buyTrade.price,
     buyTrade.amountCounterCurrency,
-    buyTrade.actualFee != null ? buyTrade.actualFee : '',
     sellTrade.exchangeName,
     sellTrade.symbol,
     sellTrade.side,
     sellTrade.amount,
     sellTrade.price,
     sellTrade.amountCounterCurrency,
-    sellTrade.actualFee != null ? sellTrade.actualFee : '',
     opportunity.totalFees,
     opportunity.profit,
   ].join(',');
@@ -270,7 +268,7 @@ const getAccountBalances = async (ccxtExchanges) => {
         logger.info('protonDexBtcOrderbook not initialized, skipping this kraken update');
         return;
       }
-      if (!protonDexBtcOrderbook.updatedAt || moment().diff(protonDexBtcOrderbook.updatedAt, 'milliseconds') > 1500) {
+      if (!protonDexBtcOrderbook.updatedAt || moment().diff(protonDexBtcOrderbook.updatedAt, 'milliseconds') > 1400) {
         const lastUpdatedUtc = moment(protonDexBtcOrderbook.updatedAt).utc().format();
         logger.warn(`protonDexBtcOrderbook is stale (last updated: ${lastUpdatedUtc}), skipping`);
         return;

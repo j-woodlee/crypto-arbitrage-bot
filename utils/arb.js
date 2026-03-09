@@ -277,7 +277,7 @@ class ArbitrageEngine {
       krakenParams,
     );
     krakenTrade.orderId = krakenOrder.id;
-    this.logger.info(`Kraken order created: ${JSON.stringify(krakenOrder)}`);
+    // this.logger.info(`Kraken order created: ${JSON.stringify(krakenOrder)}`);
 
     // createOrder response from Kraken often lacks fill data for IOC orders
     // that execute immediately, so fetch the order to get accurate fill info
@@ -286,12 +286,12 @@ class ArbitrageEngine {
       krakenTrade.symbol,
     );
 
-    this.logger.info(`Kraken order fetched: ${JSON.stringify(fetchedKrakenOrder)}`);
+    // this.logger.info(`Kraken order fetched: ${JSON.stringify(fetchedKrakenOrder)}`);
 
     const krakenFilledAmount = fetchedKrakenOrder.filled || 0;
     const krakenAvgPrice = fetchedKrakenOrder.average || krakenTrade.price;
     const krakenCost = fetchedKrakenOrder.cost || 0;
-    const krakenFee = (fetchedKrakenOrder.fee && fetchedKrakenOrder.fee.cost) || 0;
+    const krakenFee = fetchedKrakenOrder.fee?.cost || 0;
     this.logger.info(`Kraken order ${krakenOrder.id} filled: ${krakenFilledAmount} / ${krakenTrade.amount}, avgPrice: ${krakenAvgPrice}, cost: ${krakenCost}, fee: ${krakenFee}`);
 
     if (krakenFilledAmount <= 0) {
@@ -327,14 +327,10 @@ class ArbitrageEngine {
     // Update trades with actual fill data for CSV
     krakenTrade.amount = dexAmount;
     krakenTrade.price = krakenAvgPrice;
-    krakenTrade.amountCounterCurrency = krakenCost
-      ? toFixedNumber(krakenCost, KRAKEN_USD_PRECISION, 10)
-      : toFixedNumber(krakenAvgPrice * dexAmount, KRAKEN_USD_PRECISION, 10);
-    krakenTrade.actualFee = krakenFee;
+    krakenTrade.amountCounterCurrency = toFixedNumber(krakenCost, KRAKEN_USD_PRECISION, 10);
 
     // Recalculate total fees and profit from actual fill data
-    const dexFeeEstimate = 0;
-    const totalFees = toFixedNumber(krakenFee + dexFeeEstimate, KRAKEN_USD_PRECISION, 10);
+    const totalFees = toFixedNumber(krakenFee, KRAKEN_USD_PRECISION, 10);
     const revenue = Math.abs(
       krakenTrade.amountCounterCurrency - dexTrade.amountCounterCurrency,
     );
