@@ -1,6 +1,9 @@
 /* eslint-disable max-len */
 const Promise = require('bluebird');
 
+const KRAKEN_USD_PRECISION = 4;
+const DEX_XMD_PRECISION = 6;
+
 const toFixedNumber = (num, digits, base) => {
   const pow = (base ?? 10) ** digits;
   return Math.round(num * pow) / pow;
@@ -226,16 +229,16 @@ class ArbitrageEngine {
       totalFeesInCounterCurrency += feeInCounterCurrency;
     });
 
-    // round totalfees to 4 decimal places (kraken max precision for USD)
-    totalFeesInCounterCurrency = toFixedNumber(totalFeesInCounterCurrency, 4, 10);
+    // round totalfees to kraken max precision for USD
+    totalFeesInCounterCurrency = toFixedNumber(totalFeesInCounterCurrency, KRAKEN_USD_PRECISION, 10);
 
     const revenueInCounterCurrency = Math.abs(
       opportunity.trades[0].amountCounterCurrency - opportunity.trades[1].amountCounterCurrency,
     );
 
-    const profit = toFixedNumber(revenueInCounterCurrency - totalFeesInCounterCurrency, 4, 10); // round to Kraken USD max precision of 4
+    const profit = toFixedNumber(revenueInCounterCurrency - totalFeesInCounterCurrency, KRAKEN_USD_PRECISION, 10);
     // this.logger.info(`profit: ${profit} ${opportunity.trades[1].counterCurrency}`);
-    if (profit > 0.0001) { // kraken max precision is 4 for USD, XMD is 6. We take all profit greater than USD's smallest unit
+    if (profit > 0.0001) {
       // eslint-disable-next-line no-param-reassign
       opportunity.totalFees = totalFeesInCounterCurrency;
       // eslint-disable-next-line no-param-reassign
@@ -246,58 +249,92 @@ class ArbitrageEngine {
     return false;
   }
 
-  // async executeOpportunities(opportunities) {
-  //   await Promise.map(opportunities, () => {});
-  // }
-
   async executeOpportunity(opportunity) {
     // this.logger.info('opportunity: ');
     this.logger.info(JSON.stringify(opportunity));
     const { trades } = opportunity;
-    const requestedTrades = await Promise.map(trades, async (trade) => {
-      const {
-        symbol, side, amount, price,
-      } = trade;
-      const type = 'limit';
-      const amountToSend = amount.toString();
-      const priceToSend = price.toString();
 
-      const exchange = this.ccxtExchanges[trade.exchangeName];
-      let order;
-      if (trade.exchangeName === 'Kraken') {
-        // oflags: 'fciq' — "Fee in quote currency." By default Kraken can deduct fees from the received currency, which can mess up your balance accounting. This flag forces fees to come from the quote (counter) currency.
-        // oflags: 'fcib' — "Fee in base currency." Same idea, opposite direction.
-        // timeInForce: 'IOC' (Immediate-Or-Cancel) — Fills as much as possible immediately and cancels the rest. Very useful for arb since you don't want a partially filled limit order sitting on the book if the opportunity vanishes.
-        const params = { oflags: 'fciq' };
-        this.logger.info(`executing Kraken order ${symbol}, ${type}, ${side}, ${amountToSend}, ${priceToSend}, ${JSON.stringify(params)}`);
-        order = await exchange
-          .createOrder(
-            symbol,
-            type,
-            side,
-            amountToSend,
-            priceToSend,
-            params,
-          );
-      } else if (trade.exchangeName === 'ProtonDex') {
-        const params = {
-          localSymbol: trade.symbol, // for dex
-          quoteCurrencyQty: trade.amountCounterCurrency, // for dex
-          fillType: 0, // for dex
-        };
-        this.logger.info(`executing Protondex order ${symbol}, ${type}, ${side}, ${amountToSend}, ${priceToSend}, ${JSON.stringify(params)}`);
-        order = await exchange
-          .createOrder(symbol, type, side, amountToSend, priceToSend, params);
-      } else {
-        throw new Error('we do not support this exchange');
-      }
+    const krakenTrade = trades.find((t) => t.exchangeName === 'Kraken');
+    const dexTrade = trades.find((t) => t.exchangeName === 'ProtonDex');
 
-      const requestedTrade = trade;
-      requestedTrade.orderId = order.id;
-      return requestedTrade;
-    });
+    if (!krakenTrade || !dexTrade) {
+      throw new Error('opportunity must have both a Kraken and ProtonDex trade');
+    }
 
-    this.logger.info(`Opportunity executed, trades: ${JSON.stringify(requestedTrades)}`);
+    // 1. Execute Kraken order first (IOC — fills immediately or cancels remainder)
+    const krakenExchange = this.ccxtExchanges[krakenTrade.exchangeName];
+    // oflags: 'fciq' — "Fee in quote currency." By default Kraken can deduct fees from the received currency, which can mess up your balance accounting. This flag forces fees to come from the quote (counter) currency.
+    // oflags: 'fcib' — "Fee in base currency." Same idea, opposite direction.
+    // timeInForce: 'IOC' (Immediate-Or-Cancel) — Fills as much as possible immediately and cancels the rest. Very useful for arb since you don't want a partially filled limit order sitting on the book if the opportunity vanishes.
+    const krakenParams = { oflags: 'fciq', timeInForce: 'IOC' };
+    this.logger.info(`executing Kraken order ${krakenTrade.symbol}, limit, ${krakenTrade.side}, ${krakenTrade.amount}, ${krakenTrade.price}, ${JSON.stringify(krakenParams)}`);
+    const krakenOrder = await krakenExchange.createOrder(
+      krakenTrade.symbol,
+      'limit',
+      krakenTrade.side,
+      krakenTrade.amount.toString(),
+      krakenTrade.price.toString(),
+      krakenParams,
+    );
+    krakenTrade.orderId = krakenOrder.id;
+
+    const krakenFilledAmount = krakenOrder.filled || 0;
+    const krakenAvgPrice = krakenOrder.average || krakenTrade.price;
+    const krakenCost = krakenOrder.cost || 0;
+    const krakenFee = (krakenOrder.fee && krakenOrder.fee.cost) || 0;
+    this.logger.info(`Kraken order ${krakenOrder.id} filled: ${krakenFilledAmount} / ${krakenTrade.amount}, avgPrice: ${krakenAvgPrice}, cost: ${krakenCost}, fee: ${krakenFee}`);
+
+    if (krakenFilledAmount <= 0) {
+      this.logger.warn('Kraken IOC order filled 0, skipping ProtonDex leg');
+      return false;
+    }
+
+    // 2. Execute ProtonDex order with however much Kraken filled
+    const dexExchange = this.ccxtExchanges[dexTrade.exchangeName];
+    const dexAmount = toFixedNumber(krakenFilledAmount, opportunity.precision, 10);
+    dexTrade.amount = dexAmount;
+    dexTrade.amountCounterCurrency = toFixedNumber(
+      dexTrade.price * dexAmount,
+      DEX_XMD_PRECISION,
+      10,
+    );
+    const dexParams = {
+      localSymbol: dexTrade.symbol, // for dex
+      quoteCurrencyQty: dexTrade.amountCounterCurrency, // for dex
+      fillType: 0, // for dex
+    };
+    this.logger.info(`executing Protondex order ${dexTrade.symbol}, limit, ${dexTrade.side}, ${dexTrade.amount}, ${dexTrade.price}, ${JSON.stringify(dexParams)}`);
+    const dexOrder = await dexExchange.createOrder(
+      dexTrade.symbol,
+      'limit',
+      dexTrade.side,
+      dexTrade.amount.toString(),
+      dexTrade.price.toString(),
+      dexParams,
+    );
+    dexTrade.orderId = dexOrder.id;
+
+    // Update trades with actual fill data for CSV
+    krakenTrade.amount = dexAmount;
+    krakenTrade.price = krakenAvgPrice;
+    krakenTrade.amountCounterCurrency = krakenCost
+      ? toFixedNumber(krakenCost, KRAKEN_USD_PRECISION, 10)
+      : toFixedNumber(krakenAvgPrice * dexAmount, KRAKEN_USD_PRECISION, 10);
+    krakenTrade.actualFee = krakenFee;
+
+    // Recalculate total fees and profit from actual fill data
+    const dexFeeEstimate = 0;
+    const totalFees = toFixedNumber(krakenFee + dexFeeEstimate, KRAKEN_USD_PRECISION, 10);
+    const revenue = Math.abs(
+      krakenTrade.amountCounterCurrency - dexTrade.amountCounterCurrency,
+    );
+    // eslint-disable-next-line no-param-reassign
+    opportunity.totalFees = totalFees;
+    // eslint-disable-next-line no-param-reassign
+    opportunity.profit = toFixedNumber(revenue - totalFees, KRAKEN_USD_PRECISION, 10);
+
+    this.logger.info(`Opportunity executed, trades: ${JSON.stringify([krakenTrade, dexTrade])}`);
+    return true;
   }
 
   async tradesFinished(trades) {
@@ -314,23 +351,6 @@ class ArbitrageEngine {
       }
     }
     return true;
-  }
-
-  static putKrakenTradesFirst(trades) {
-    return trades.sort((a, b) => {
-      if (a.exchangeName === b.exchangeName) {
-        return 0;
-      }
-
-      if (a.exchangeName === 'Kraken' && b.exchangeName !== 'Kraken') {
-        return -1;
-      }
-
-      if (a.exchangeName !== 'Kraken' && b.exchangeName === 'Kraken') {
-        return 1;
-      }
-      throw new Error('impossible array values');
-    });
   }
 }
 
