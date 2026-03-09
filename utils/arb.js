@@ -277,11 +277,21 @@ class ArbitrageEngine {
       krakenParams,
     );
     krakenTrade.orderId = krakenOrder.id;
+    this.logger.info(`Kraken order created: ${JSON.stringify(krakenOrder)}`);
 
-    const krakenFilledAmount = krakenOrder.filled || 0;
-    const krakenAvgPrice = krakenOrder.average || krakenTrade.price;
-    const krakenCost = krakenOrder.cost || 0;
-    const krakenFee = (krakenOrder.fee && krakenOrder.fee.cost) || 0;
+    // createOrder response from Kraken often lacks fill data for IOC orders
+    // that execute immediately, so fetch the order to get accurate fill info
+    const fetchedKrakenOrder = await krakenExchange.fetchOrder(
+      krakenOrder.id,
+      krakenTrade.symbol,
+    );
+
+    this.logger.info(`Kraken order fetched: ${JSON.stringify(fetchedKrakenOrder)}`);
+
+    const krakenFilledAmount = fetchedKrakenOrder.filled || 0;
+    const krakenAvgPrice = fetchedKrakenOrder.average || krakenTrade.price;
+    const krakenCost = fetchedKrakenOrder.cost || 0;
+    const krakenFee = (fetchedKrakenOrder.fee && fetchedKrakenOrder.fee.cost) || 0;
     this.logger.info(`Kraken order ${krakenOrder.id} filled: ${krakenFilledAmount} / ${krakenTrade.amount}, avgPrice: ${krakenAvgPrice}, cost: ${krakenCost}, fee: ${krakenFee}`);
 
     if (krakenFilledAmount <= 0) {
