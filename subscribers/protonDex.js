@@ -7,7 +7,7 @@ const { OrderBook } = require('../utils');
 const protonDexEndpoint = 'metal-dexdb.global.binfra.one'; // mainnet
 // const protonDexEndpoint = 'mainnet.api.protondex.com';
 
-const ORDERBOOK_UPDATE_INTERVAL_MS = 1000;
+const ORDERBOOK_UPDATE_INTERVAL_MS = 800;
 const REQUEST_TIMEOUT_MS = 2000;
 
 class ProtonDexSubscriber {
