@@ -30,10 +30,10 @@ const chainUrlsProd = [
 
 const OPPORTUNITY_CSV_PATH = path.join(__dirname, 'executed_opportunities.csv');
 
-const writeOpportunityToCsv = (opportunity, executed) => {
+const writeOpportunityToCsv = (opportunity) => {
   const fileExists = fs.existsSync(OPPORTUNITY_CSV_PATH);
   if (!fileExists) {
-    const header = 'timestamp,executed,buy_exchange,buy_symbol,buy_side,buy_amount,'
+    const header = 'timestamp,buy_exchange,buy_symbol,buy_side,buy_amount,'
       + 'buy_price,buy_amount_counter,sell_exchange,sell_symbol,'
       + 'sell_side,sell_amount,sell_price,sell_amount_counter,total_fees,net_profit\n';
     fs.writeFileSync(OPPORTUNITY_CSV_PATH, header);
@@ -43,7 +43,6 @@ const writeOpportunityToCsv = (opportunity, executed) => {
   const sellTrade = opportunity.trades.find((t) => t.side === 'sell');
   const row = [
     new Date().toISOString(),
-    executed,
     buyTrade.exchangeName,
     buyTrade.symbol,
     buyTrade.side,
@@ -238,27 +237,11 @@ const getAccountBalances = async (ccxtExchanges) => {
   const protonDexSubscriber = new ProtonDexSubscriber(protonDexExchangeProducts, logger);
   await protonDexSubscriber.start();
 
-  let balancesReady = false;
-
-  const refreshBalances = async () => {
-    try {
-      const balances = await getAccountBalances([protonDex, kraken]);
-      arbEngine.updateBalances(balances);
-      balancesReady = true;
-      logger.info('Balance refresh complete');
-    } catch (e) {
-      balancesReady = false;
-      logger.error(`e.message: ${e.message}, e.code: ${e.code}, error refreshing balances`);
-    }
-  };
-
   let isExecuting = false;
   let orderBookService;
 
   const onKrakenUpdate = async (productId, krakenOrderbook) => {
     if (isExecuting) return;
-
-    if (!balancesReady) return;
 
     if (!orderBookService.orderbooksInitialized()) return;
 
@@ -268,9 +251,8 @@ const getAccountBalances = async (ccxtExchanges) => {
         logger.info('protonDexBtcOrderbook not initialized, skipping this kraken update');
         return;
       }
-      if (!protonDexBtcOrderbook.updatedAt || moment().diff(protonDexBtcOrderbook.updatedAt, 'milliseconds') > 1400) {
-        const lastUpdatedUtc = moment(protonDexBtcOrderbook.updatedAt).utc().format();
-        logger.warn(`protonDexBtcOrderbook is stale (last updated: ${lastUpdatedUtc}), skipping`);
+      if (!protonDexBtcOrderbook.updatedAt || moment().diff(protonDexBtcOrderbook.updatedAt, 'milliseconds') > 2000) {
+        logger.warn(`protonDexBtcOrderbook is stale (last updated: ${protonDexBtcOrderbook.updatedAt}), skipping`);
         return;
       }
 
@@ -279,9 +261,10 @@ const getAccountBalances = async (ccxtExchanges) => {
       if (opportunityBtc) {
         isExecuting = true;
         try {
-          const executed = await arbEngine.executeOpportunity(opportunityBtc);
-          writeOpportunityToCsv(opportunityBtc, executed);
-          await refreshBalances();
+          await arbEngine.executeOpportunity(opportunityBtc);
+          writeOpportunityToCsv(opportunityBtc);
+          const balances = await getAccountBalances([protonDex, kraken]);
+          arbEngine.updateBalances(balances);
         } catch (e) {
           logger.error(`e.message: ${e.message}, e.code: ${e.code}, error executing BTC opportunity`);
           throw e;
@@ -299,6 +282,16 @@ const getAccountBalances = async (ccxtExchanges) => {
     logger,
     onKrakenUpdate,
   );
+
+  const refreshBalances = async () => {
+    try {
+      const balances = await getAccountBalances([protonDex, kraken]);
+      arbEngine.updateBalances(balances);
+      logger.info('Balance refresh complete');
+    } catch (e) {
+      logger.error(`e.message: ${e.message}, e.code: ${e.code}, error refreshing balances`);
+    }
+  };
 
   const refreshFeeSchedule = async () => {
     try {
