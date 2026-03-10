@@ -89,6 +89,9 @@ class ArbitrageEngine {
     if (amount < 0.0001) { // minimum kraken btc size is 0.0001
       return 0;
     }
+    if (amount > 0.0007) { // limit to this amount of btc for now
+      return 0.0007;
+    }
     return amount;
   }
 
