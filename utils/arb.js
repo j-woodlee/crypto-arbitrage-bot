@@ -10,9 +10,10 @@ const toFixedNumber = (num, digits, base) => {
 };
 
 class ArbitrageEngine {
-  constructor(ccxtExchanges, logger) {
+  constructor(ccxtExchanges, logger, krakenSubscriber) {
     this.ccxtExchanges = ccxtExchanges;
     this.logger = logger;
+    this.krakenSubscriber = krakenSubscriber || null;
     this.feeSchedule = {
       Kraken: { taker: 0.004 },
       ProtonDex: { taker: 0 },
@@ -92,6 +93,9 @@ class ArbitrageEngine {
     if (amount < 0.0001) { // minimum kraken btc size is 0.0001
       return 0;
     }
+    if (amount > 0.0005) {
+      return 0.0005;
+    }
     return amount;
   }
 
@@ -133,7 +137,7 @@ class ArbitrageEngine {
         side: 'buy',
         amount: amountToBuyRounded, // in base currency
         price: buyPrice,
-        amountCounterCurrency: toFixedNumber(buyPrice * amountToBuyRounded, orderbook2.counterCurrencyPrecision, 10),
+        amountCounterCurrency: buyPrice * amountToBuyRounded,
         exchangeName: orderbook2.exchangeName,
         symbol: orderbook2.symbol,
         baseCurrency: orderbook2.baseCurrency,
@@ -143,7 +147,7 @@ class ArbitrageEngine {
         side: 'sell',
         amount: amountToBuyRounded,
         price: sellPrice,
-        amountCounterCurrency: toFixedNumber(sellPrice * amountToBuyRounded, orderbook1.counterCurrencyPrecision, 10),
+        amountCounterCurrency: sellPrice * amountToBuyRounded,
         exchangeName: orderbook1.exchangeName,
         symbol: orderbook1.symbol,
         baseCurrency: orderbook1.baseCurrency,
@@ -188,7 +192,7 @@ class ArbitrageEngine {
         side: 'buy',
         amount: amountToBuyRounded, // in base currency
         price: buyPrice,
-        amountCounterCurrency: toFixedNumber(buyPrice * amountToBuyRounded, orderbook1.counterCurrencyPrecision, 10),
+        amountCounterCurrency: buyPrice * amountToBuyRounded,
         exchangeName: orderbook1.exchangeName,
         symbol: orderbook1.symbol,
         baseCurrency: orderbook1.baseCurrency,
@@ -198,7 +202,7 @@ class ArbitrageEngine {
         side: 'sell',
         amount: amountToBuyRounded,
         price: sellPrice,
-        amountCounterCurrency: toFixedNumber(sellPrice * amountToBuyRounded, orderbook2.counterCurrencyPrecision, 10),
+        amountCounterCurrency: sellPrice * amountToBuyRounded,
         exchangeName: orderbook2.exchangeName,
         symbol: orderbook2.symbol,
         baseCurrency: orderbook2.baseCurrency,
@@ -279,19 +283,28 @@ class ArbitrageEngine {
     krakenTrade.orderId = krakenOrder.id;
     // this.logger.info(`Kraken order created: ${JSON.stringify(krakenOrder)}`);
 
-    // createOrder response from Kraken often lacks fill data for IOC orders
-    // that execute immediately, so fetch the order to get accurate fill info
-    const fetchedKrakenOrder = await krakenExchange.fetchOrder(
-      krakenOrder.id,
-      krakenTrade.symbol,
-    );
-
-    // this.logger.info(`Kraken order fetched: ${JSON.stringify(fetchedKrakenOrder)}`);
-
-    const krakenFilledAmount = fetchedKrakenOrder.filled || 0;
-    const krakenAvgPrice = fetchedKrakenOrder.average || krakenTrade.price;
-    const krakenCost = fetchedKrakenOrder.cost || 0;
-    const krakenFee = fetchedKrakenOrder.fee?.cost || 0;
+    // Wait for fill data via the executions WebSocket for faster response,
+    // falling back to REST fetchOrder if no subscriber is available.
+    let krakenFilledAmount;
+    let krakenAvgPrice;
+    let krakenCost;
+    let krakenFee;
+    if (this.krakenSubscriber) {
+      const fillData = await this.krakenSubscriber.waitForOrderFill(krakenOrder.id);
+      krakenFilledAmount = fillData.filled || 0;
+      krakenAvgPrice = fillData.average || krakenTrade.price;
+      krakenCost = fillData.cost || 0;
+      krakenFee = fillData.fee || 0;
+    } else {
+      const fetchedKrakenOrder = await krakenExchange.fetchOrder(
+        krakenOrder.id,
+        krakenTrade.symbol,
+      );
+      krakenFilledAmount = fetchedKrakenOrder.filled || 0;
+      krakenAvgPrice = fetchedKrakenOrder.average || krakenTrade.price;
+      krakenCost = fetchedKrakenOrder.cost || 0;
+      krakenFee = fetchedKrakenOrder.fee?.cost || 0;
+    }
     this.logger.info(`Kraken order ${krakenOrder.id} filled: ${krakenFilledAmount} / ${krakenTrade.amount}, avgPrice: ${krakenAvgPrice}, cost: ${krakenCost}, fee: ${krakenFee}`);
 
     if (krakenFilledAmount <= 0) {

@@ -11,6 +11,7 @@ const secrets = require('./secrets.json');
 const { ArbitrageEngine } = require('./utils');
 
 const {
+  KrakenSubscriber,
   ProtonDexSubscriber,
 } = require('./subscribers');
 
@@ -178,7 +179,7 @@ const getAccountBalances = async (ccxtExchanges) => {
 // };
 
 (async () => {
-  const logger = Logger('arb bot');
+  const logger = Logger('arb bot', 'debug');
   const krakenExchangeProducts = [
     {
       exchangeName: 'Kraken',
@@ -227,12 +228,22 @@ const getAccountBalances = async (ccxtExchanges) => {
   const protonDex = await initProtonDex(logger);
   const kraken = await initKraken();
 
+  const krakenSubscriber = new KrakenSubscriber(
+    krakenExchangeProducts,
+    logger,
+    null,
+    secrets.krakenApiKey,
+    secrets.krakenApiSecret,
+  );
+  await krakenSubscriber.startAuthWs();
+
   const arbEngine = new ArbitrageEngine(
     {
       ProtonDex: protonDex,
       Kraken: kraken,
     },
     logger,
+    krakenSubscriber,
   );
 
   const protonDexSubscriber = new ProtonDexSubscriber(protonDexExchangeProducts, logger);
@@ -265,12 +276,12 @@ const getAccountBalances = async (ccxtExchanges) => {
     if (productId === 'BTC/USD') {
       const protonDexBtcOrderbook = protonDexSubscriber.orderBooks.XBTC_XMD;
       if (!protonDexBtcOrderbook || !protonDexBtcOrderbook.initialized) {
-        logger.info('protonDexBtcOrderbook not initialized, skipping this kraken update');
+        // logger.info('protonDexBtcOrderbook not initialized, skipping this kraken update');
         return;
       }
-      if (!protonDexBtcOrderbook.updatedAt || moment().diff(protonDexBtcOrderbook.updatedAt, 'milliseconds') > 1400) {
+      if (!protonDexBtcOrderbook.updatedAt || moment().diff(protonDexBtcOrderbook.updatedAt, 'milliseconds') > 1200) {
         const lastUpdatedUtc = moment(protonDexBtcOrderbook.updatedAt).utc().format();
-        logger.warn(`protonDexBtcOrderbook is stale (last updated: ${lastUpdatedUtc}), skipping`);
+        // logger.warn(`protonDexBtcOrderbook is stale (last updated: ${lastUpdatedUtc}), skipping`);
         return;
       }
 
@@ -286,11 +297,11 @@ const getAccountBalances = async (ccxtExchanges) => {
           logger.error(`e.message: ${e.message}, e.code: ${e.code}, error executing BTC opportunity`);
           throw e;
         } finally {
-          isExecuting = false;
+          // isExecuting = false;
+          throw new Error('test');
         }
       }
     }
-    logger.debug('------------------------------------------------');
   };
 
   orderBookService = new OrderBookService(
