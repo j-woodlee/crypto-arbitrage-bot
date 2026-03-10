@@ -188,7 +188,7 @@ class ArbitrageEngine {
         side: 'buy',
         amount: amountToBuyRounded, // in base currency
         price: buyPrice,
-        amountCounterCurrency: toFixedNumber(buyPrice * amountToBuyRounded, orderbook1.counterCurrencyPrecision, 10),
+        amountCounterCurrency: buyPrice * amountToBuyRounded,
         exchangeName: orderbook1.exchangeName,
         symbol: orderbook1.symbol,
         baseCurrency: orderbook1.baseCurrency,
@@ -198,7 +198,7 @@ class ArbitrageEngine {
         side: 'sell',
         amount: amountToBuyRounded,
         price: sellPrice,
-        amountCounterCurrency: toFixedNumber(sellPrice * amountToBuyRounded, orderbook2.counterCurrencyPrecision, 10),
+        amountCounterCurrency: sellPrice * amountToBuyRounded,
         exchangeName: orderbook2.exchangeName,
         symbol: orderbook2.symbol,
         baseCurrency: orderbook2.baseCurrency,
