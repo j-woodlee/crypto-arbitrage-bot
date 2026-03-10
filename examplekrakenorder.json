@@ -1,0 +1,72 @@
+{
+    "id": "OBCWK3-5ZGLA-ETX6QZ",
+    "clientOrderId": "0",
+    "info": {
+        "id": "OBCWK3-5ZGLA-ETX6QZ",
+        "refid": null,
+        "userref": "0",
+        "status": "closed",
+        "opentm": "1773085556.130578",
+        "starttm": "0",
+        "expiretm": "0",
+        "descr": {
+            "pair": "XBTUSD",
+            "aclass": "forex",
+            "type": "buy",
+            "ordertype": "limit",
+            "price": "68868.4",
+            "price2": "0",
+            "leverage": "none",
+            "order": "buy 0.00099600 XBTUSD @ limit 68868.4",
+            "close": ""
+        },
+        "vol": "0.00099600",
+        "vol_exec": "0.00099600",
+        "cost": "68.57669",
+        "fee": "0.27431",
+        "price": "68852.0",
+        "stopprice": "0.00000",
+        "limitprice": "0.00000",
+        "misc": "",
+        "oflags": "fciq",
+        "time_in_force": "ioc",
+        "trades": [
+            "TKH7XI-ZC7DI-UPQJZV"
+        ],
+        "reason": null,
+        "closetm": "1773085556.130578"
+    },
+    "timestamp": 1773085556130,
+    "datetime": "2026-03-09T19:45:56.130Z",
+    "status": "closed",
+    "symbol": "BTC/USD",
+    "type": "limit",
+    "postOnly": false,
+    "side": "buy",
+    "price": 68868.4,
+    "cost": 68.576592,
+    "amount": 0.000996,
+    "filled": 0.000996,
+    "average": 68852,
+    "remaining": 0,
+    "fee": {
+        "cost": "0.27431",
+        "currency": "USD"
+    },
+    "trades": [
+        {
+            "id": "TKH7XI-ZC7DI-UPQJZV",
+            "orderId": "OBCWK3-5ZGLA-ETX6QZ",
+            "symbol": "BTC/USD",
+            "info": {},
+            "fee": {},
+            "fees": []
+        }
+    ],
+    "fees": [
+        {
+            "cost": 0.27431,
+            "currency": "USD"
+        }
+    ]
+}
