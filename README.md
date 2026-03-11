@@ -55,3 +55,9 @@ opportunity:
 2023-06-08T04:19:10.753Z info [{"account":"xtokens","name":"transfer","data":{"from":"jwoodlicker","to":"dex","quantity":"31.00000000 XMT","memo":""},"authorization":[{"actor":"jwoodlicker","permission":"active"}]},{"account":"dex","name":"placeorder","data":{"market_id":7,"account":"jwoodlicker","order_type":1,"order_side":2,"quantity":3100000000,"price":"1186500","bid_symbol":{"sym":"8,XMT","contract":"xtokens"},"ask_symbol":{"sym":"6,XMD","contract":"xmd.token"},"trigger_price":0,"fill_type":0,"referrer":""},"authorization":[{"actor":"jwoodlicker","permission":"active"}]},{"account":"dex","name":"process","data":{"q_size":30,"show_error_msg":false},"authorization":[{"actor":"jwoodlicker","permission":"active"}]}]
 2023-06-08T04:19:12.420Z info Opportunity executed, trades: [{"side":"buy","amount":31,"price":1.178,"amountCounterCurrency":36.518,"exchangeName":"Coinbase","symbol":"MTL-USD","baseCurrency":"MTL","counterCurrency":"USD","orderId":"90a25095-e40f-4594-8a43-6d186fa2de3d"},{"side":"sell","amount":31,"price":1.1865,"amountCounterCurrency":36.7815,"exchangeName":"ProtonDex","symbol":"XMT_XMD","baseCurrency":"XMT","counterCurrency":"XMD","orderId":"72a9c642c20fe22ea46967acc74e7b0b2183462626b7d22952526f097158af10"}]
 2023-06-08T04:19:12.420Z info next checking for opportunities in 6 seconds...
+
+
+
+
+
+Using the websockets for order updates from Kraken, we have several seconds of delay until the order is registered as filled
