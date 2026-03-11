@@ -266,47 +266,50 @@ class ArbitrageEngine {
     }
 
     // 1. Execute Kraken order first (IOC — fills immediately or cancels remainder)
-    const krakenExchange = this.ccxtExchanges[krakenTrade.exchangeName];
-    // oflags: 'fciq' — "Fee in quote currency." By default Kraken can deduct fees from the received currency, which can mess up your balance accounting. This flag forces fees to come from the quote (counter) currency.
-    // oflags: 'fcib' — "Fee in base currency." Same idea, opposite direction.
-    // timeInForce: 'IOC' (Immediate-Or-Cancel) — Fills as much as possible immediately and cancels the rest. Very useful for arb since you don't want a partially filled limit order sitting on the book if the opportunity vanishes.
-    const krakenParams = { oflags: 'fciq', timeInForce: 'IOC' };
-    this.logger.info(`executing Kraken order ${krakenTrade.symbol}, limit, ${krakenTrade.side}, ${krakenTrade.amount}, ${krakenTrade.price}, ${JSON.stringify(krakenParams)}`);
-    const krakenOrder = await krakenExchange.createOrder(
-      krakenTrade.symbol,
-      'limit',
-      krakenTrade.side,
-      krakenTrade.amount.toString(),
-      krakenTrade.price.toString(),
-      krakenParams,
-    );
-    krakenTrade.orderId = krakenOrder.id;
-    // this.logger.info(`Kraken order created: ${JSON.stringify(krakenOrder)}`);
-
-    // Wait for fill data via the executions WebSocket for faster response,
-    // falling back to REST fetchOrder if no subscriber is available.
+    // oflags: 'fciq' — "Fee in quote currency." Forces fees to come from the quote (counter) currency.
+    // time_in_force: 'ioc' (Immediate-Or-Cancel) — Fills as much as possible immediately and cancels the rest.
+    let krakenOrderId;
     let krakenFilledAmount;
     let krakenAvgPrice;
     let krakenCost;
     let krakenFee;
     if (this.krakenSubscriber) {
-      const fillData = await this.krakenSubscriber.waitForOrderFill(krakenOrder.id);
+      krakenOrderId = await this.krakenSubscriber.addOrder(
+        krakenTrade.symbol,
+        krakenTrade.side,
+        'limit',
+        krakenTrade.amount,
+        krakenTrade.price,
+        { time_in_force: 'ioc', fee_preference: 'quote' },
+      );
+      krakenTrade.orderId = krakenOrderId;
+      const fillData = await this.krakenSubscriber.waitForOrderFill(krakenOrderId);
       krakenFilledAmount = fillData.filled || 0;
       krakenAvgPrice = fillData.average || krakenTrade.price;
       krakenCost = fillData.cost || 0;
       krakenFee = fillData.fee || 0;
     } else {
-      this.logger.warn('no kraken subscriber, using REST fetchOrder');
-      const fetchedKrakenOrder = await krakenExchange.fetchOrder(
-        krakenOrder.id,
+      this.logger.warn('no kraken subscriber, using REST createOrder + fetchOrder');
+      const krakenExchange = this.ccxtExchanges[krakenTrade.exchangeName];
+      const krakenParams = { oflags: 'fciq', timeInForce: 'IOC' };
+      this.logger.info(`executing Kraken order ${krakenTrade.symbol}, limit, ${krakenTrade.side}, ${krakenTrade.amount}, ${krakenTrade.price}, ${JSON.stringify(krakenParams)}`);
+      const krakenOrder = await krakenExchange.createOrder(
         krakenTrade.symbol,
+        'limit',
+        krakenTrade.side,
+        krakenTrade.amount.toString(),
+        krakenTrade.price.toString(),
+        krakenParams,
       );
+      krakenOrderId = krakenOrder.id;
+      krakenTrade.orderId = krakenOrderId;
+      const fetchedKrakenOrder = await krakenExchange.fetchOrder(krakenOrderId, krakenTrade.symbol);
       krakenFilledAmount = fetchedKrakenOrder.filled || 0;
       krakenAvgPrice = fetchedKrakenOrder.average || krakenTrade.price;
       krakenCost = fetchedKrakenOrder.cost || 0;
       krakenFee = fetchedKrakenOrder.fee?.cost || 0;
     }
-    this.logger.info(`Kraken order ${krakenOrder.id} filled: ${krakenFilledAmount} / ${krakenTrade.amount}, avgPrice: ${krakenAvgPrice}, cost: ${krakenCost}, fee: ${krakenFee}`);
+    this.logger.info(`Kraken order ${krakenOrderId} filled: ${krakenFilledAmount} / ${krakenTrade.amount}, avgPrice: ${krakenAvgPrice}, cost: ${krakenCost}, fee: ${krakenFee}`);
 
     if (krakenFilledAmount <= 0) {
       this.logger.warn('Kraken IOC order filled 0, skipping ProtonDex leg');

@@ -27,6 +27,8 @@ class KrakenSubscriber {
     this.wsAuth = null;
     this.pendingOrderFills = new Map();
     this.executionEventBuffer = new Map();
+    this.pendingOrderResponses = new Map();
+    this.reqIdCounter = 1;
   }
 
   async restart() {
@@ -121,6 +123,18 @@ class KrakenSubscriber {
             }
           }
 
+          if (parsed.method === 'add_order') {
+            const pending = this.pendingOrderResponses.get(parsed.req_id);
+            if (pending) {
+              this.pendingOrderResponses.delete(parsed.req_id);
+              if (parsed.success) {
+                pending.resolve(parsed.result.order_id);
+              } else {
+                pending.reject(new Error(`Kraken add_order failed: ${JSON.stringify(parsed.error)}`));
+              }
+            }
+          }
+
           if (parsed.channel !== 'executions') return;
           if (parsed.type === 'snapshot') return;
           if (!Array.isArray(parsed.data)) return;
@@ -191,6 +205,42 @@ class KrakenSubscriber {
           resolve(fillData);
         },
       });
+    });
+  }
+
+  addOrder(symbol, side, orderType, qty, limitPrice, params = {}, timeoutMs = 10000) {
+    return new Promise((resolve, reject) => {
+      if (!this.wsAuth || this.wsAuth.readyState !== WebSocket.OPEN) {
+        reject(new Error('Kraken: authenticated WS not open, cannot place order'));
+        return;
+      }
+
+      // eslint-disable-next-line no-plusplus
+      const reqId = this.reqIdCounter++;
+      const timer = setTimeout(() => {
+        this.pendingOrderResponses.delete(reqId);
+        reject(new Error(`Kraken: timed out waiting for add_order response (reqId=${reqId}) after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      this.pendingOrderResponses.set(reqId, {
+        resolve: (orderId) => { clearTimeout(timer); resolve(orderId); },
+        reject: (err) => { clearTimeout(timer); reject(err); },
+      });
+
+      const msg = {
+        method: 'add_order',
+        req_id: reqId,
+        params: {
+          symbol,
+          side,
+          order_type: orderType,
+          qty,
+          limit_price: limitPrice,
+          ...params,
+        },
+      };
+      this.logger.info(`Kraken WS add_order: ${JSON.stringify(msg.params)}`);
+      this.wsAuth.send(JSON.stringify(msg));
     });
   }
 
