@@ -296,6 +296,7 @@ class ArbitrageEngine {
       krakenCost = fillData.cost || 0;
       krakenFee = fillData.fee || 0;
     } else {
+      this.logger.warn('no kraken subscriber, using REST fetchOrder');
       const fetchedKrakenOrder = await krakenExchange.fetchOrder(
         krakenOrder.id,
         krakenTrade.symbol,
