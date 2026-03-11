@@ -280,7 +280,7 @@ const getAccountBalances = async (ccxtExchanges) => {
         return;
       }
       if (!protonDexBtcOrderbook.updatedAt || moment().diff(protonDexBtcOrderbook.updatedAt, 'milliseconds') > 1200) {
-        const lastUpdatedUtc = moment(protonDexBtcOrderbook.updatedAt).utc().format();
+        // const lastUpdatedUtc = moment(protonDexBtcOrderbook.updatedAt).utc().format();
         // logger.warn(`protonDexBtcOrderbook is stale (last updated: ${lastUpdatedUtc}), skipping`);
         return;
       }

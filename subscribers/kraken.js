@@ -26,6 +26,7 @@ class KrakenSubscriber {
     this.shouldRestart = false;
     this.wsAuth = null;
     this.pendingOrderFills = new Map();
+    this.executionEventBuffer = new Map();
   }
 
   async restart() {
@@ -126,26 +127,30 @@ class KrakenSubscriber {
 
           parsed.data.forEach((exec) => {
             const {
-              order_id: orderId, order_status: status, filled_qty: filledQty,
-              avg_price: avgPrice, fees_usd: feesUsd, cost_usd: costUsd, cost,
+              order_id: orderId, order_status: status,
+              cum_qty: cumQty, avg_price: avgPrice,
+              fee_usd_equiv: feeUsdEquiv, cum_cost: cumCost,
             } = exec;
             this.logger.info(
-              `Kraken exec event: orderId=${orderId} status=${status} filled=${filledQty} avg=${avgPrice}`,
+              `Kraken exec event: orderId=${orderId} status=${status} cumQty=${cumQty} avg=${avgPrice}`,
             );
             if (!orderId) return;
-            const pending = this.pendingOrderFills.get(orderId);
-            if (!pending) return;
             // For IOC orders: resolve on 'filled' (full fill) or 'canceled' (partial fill + cancel of remainder)
             const terminal = status === 'filled' || status === 'canceled' || status === 'expired';
-            if (terminal) {
+            if (!terminal) return;
+            const fillData = {
+              filled: parseFloat(cumQty ?? 0),
+              average: parseFloat(avgPrice ?? 0),
+              cost: parseFloat(cumCost ?? 0),
+              fee: parseFloat(feeUsdEquiv ?? 0),
+              status,
+            };
+            const pending = this.pendingOrderFills.get(orderId);
+            if (pending) {
               this.pendingOrderFills.delete(orderId);
-              pending.resolve({
-                filled: parseFloat(filledQty ?? 0),
-                average: parseFloat(avgPrice ?? 0),
-                cost: parseFloat(cost ?? costUsd ?? 0),
-                fee: parseFloat(feesUsd ?? 0),
-                status,
-              });
+              pending.resolve(fillData);
+            } else {
+              this.executionEventBuffer.set(orderId, fillData);
             }
           });
         });
@@ -168,6 +173,12 @@ class KrakenSubscriber {
   }
 
   waitForOrderFill(orderId, timeoutMs = 10000) {
+    const buffered = this.executionEventBuffer.get(orderId);
+    if (buffered) {
+      this.executionEventBuffer.delete(orderId);
+      return Promise.resolve(buffered);
+    }
+
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pendingOrderFills.delete(orderId);
