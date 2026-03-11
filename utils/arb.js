@@ -2,7 +2,7 @@
 const Promise = require('bluebird');
 
 const KRAKEN_USD_PRECISION = 4;
-const DEX_XMD_PRECISION = 6;
+// const DEX_XMD_PRECISION = 6;
 
 const toFixedNumber = (num, digits, base) => {
   const pow = (base ?? 10) ** digits;
@@ -316,11 +316,7 @@ class ArbitrageEngine {
     const dexExchange = this.ccxtExchanges[dexTrade.exchangeName];
     const dexAmount = toFixedNumber(krakenFilledAmount, opportunity.precision, 10);
     dexTrade.amount = dexAmount;
-    dexTrade.amountCounterCurrency = toFixedNumber(
-      dexTrade.price * dexAmount,
-      DEX_XMD_PRECISION,
-      10,
-    );
+    dexTrade.amountCounterCurrency = dexTrade.price * dexAmount;
     const dexParams = {
       localSymbol: dexTrade.symbol, // for dex
       quoteCurrencyQty: dexTrade.amountCounterCurrency, // for dex
