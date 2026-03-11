@@ -65,7 +65,7 @@ const writeOpportunityToCsv = (opportunity, executed) => {
 };
 
 const initProtonDex = async (logger) => {
-  const protonDex = new metalCcxt.ProtonDexV2({
+  const protonDex = new metalCcxt.ProtonDex({
     privateKey: secrets.protonDexMainnetPrivateKey,
     chainUrls: chainUrlsProd,
     actor: secrets.mainnetActor,
