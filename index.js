@@ -292,6 +292,7 @@ const getAccountBalances = async (ccxtExchanges) => {
         try {
           const executed = await arbEngine.executeOpportunity(opportunityBtc);
           writeOpportunityToCsv(opportunityBtc, executed);
+          await protonDexSubscriber.refreshOrderbook('XBTC_XMD');
           await refreshBalances();
         } catch (e) {
           logger.error(`e.message: ${e.message}, e.code: ${e.code}, error executing BTC opportunity`);

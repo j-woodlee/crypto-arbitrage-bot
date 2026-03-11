@@ -112,6 +112,15 @@ class ProtonDexSubscriber {
     // this.logger.warn(`${this.name} ${ep.localSymbol}: Updated Orderbook`);
   }
 
+  async refreshOrderbook(localSymbol) {
+    const ep = this.exchangeProducts.find((p) => p.localSymbol === localSymbol);
+    if (!ep) {
+      this.logger.warn(`ProtonDex: refreshOrderbook called for unknown symbol ${localSymbol}`);
+      return;
+    }
+    await this.initOrderbook(ep);
+  }
+
   addProducts(exchangeProducts) {
     exchangeProducts.forEach((ep) => {
       this.orderBooks[ep.localSymbol] = new OrderBook(
