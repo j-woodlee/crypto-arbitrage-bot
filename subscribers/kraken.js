@@ -90,6 +90,7 @@ class KrakenSubscriber {
 
     return new Promise((resolveReady, rejectReady) => {
       this.fetchWsToken().then((token) => {
+        this.wsToken = token;
         const uri = 'wss://ws-auth.kraken.com/v2';
         this.wsAuth = new WebSocket(uri);
         let subscriptionConfirmed = false;
@@ -176,6 +177,7 @@ class KrakenSubscriber {
 
         this.wsAuth.on('close', async () => {
           this.logger.warn('Kraken authenticated WS closed, reconnecting in 3s...');
+          this.wsToken = null;
           await new Promise((r) => { setTimeout(r, 3000); });
           this.startAuthWs();
         });
@@ -234,8 +236,9 @@ class KrakenSubscriber {
           symbol,
           side,
           order_type: orderType,
-          qty,
+          order_qty: qty,
           limit_price: limitPrice,
+          token: this.wsToken,
           ...params,
         },
       };
