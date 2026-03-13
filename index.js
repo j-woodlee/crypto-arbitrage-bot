@@ -279,7 +279,7 @@ const getAccountBalances = async (ccxtExchanges) => {
         // logger.info('protonDexBtcOrderbook not initialized, skipping this kraken update');
         return;
       }
-      if (!protonDexBtcOrderbook.updatedAt || moment().diff(protonDexBtcOrderbook.updatedAt, 'milliseconds') > 1050) {
+      if (!protonDexBtcOrderbook.updatedAt || moment().diff(protonDexBtcOrderbook.updatedAt, 'milliseconds') > 1000) {
         // const lastUpdatedUtc = moment(protonDexBtcOrderbook.updatedAt).utc().format();
         // logger.warn(`protonDexBtcOrderbook is stale (last updated: ${lastUpdatedUtc}), skipping`);
         return;
