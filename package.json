@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@metalpay/metal-ccxt-lib": "^2.0.3-3",
+    "@metalpay/metal-ccxt-lib": "^2.0.3-4",
     "@metalpay/metal-nebula-logger": "^2.0.6",
     "axios": "^1.4.0",
     "bintrees": "^1.0.2",
