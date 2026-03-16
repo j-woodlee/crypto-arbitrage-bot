@@ -226,6 +226,7 @@ const getAccountBalances = async (ccxtExchanges) => {
   ];
 
   const protonDex = await initProtonDex(logger);
+  await protonDex.startTransactionHeaderRefresh();
   const kraken = await initKraken();
 
   const krakenSubscriber = new KrakenSubscriber(
