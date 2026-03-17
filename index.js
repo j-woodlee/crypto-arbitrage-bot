@@ -12,7 +12,7 @@ const { ArbitrageEngine } = require('./utils');
 
 const {
   KrakenSubscriber,
-  ProtonDexSubscriber,
+  MetalxSubscriber,
 } = require('./subscribers');
 
 const chainUrlsProd = [
@@ -193,37 +193,37 @@ const getAccountBalances = async (ccxtExchanges) => {
     },
   ];
 
-  const protonDexExchangeProducts = [{
-    exchangeName: 'ProtonDex',
-    localSymbol: 'XBTC_XMD',
-    product: {
-      counterProductPrecision: 6,
-    },
-    baseCurrency: 'XBTC',
-    counterCurrency: 'XMD',
-    precision: 8,
-  },
-  // {
+  // const protonDexExchangeProducts = [{
   //   exchangeName: 'ProtonDex',
-  //   localSymbol: 'XETH_XMD',
+  //   localSymbol: 'XBTC_XMD',
   //   product: {
   //     counterProductPrecision: 6,
   //   },
-  //   baseCurrency: 'XETH',
+  //   baseCurrency: 'XBTC',
   //   counterCurrency: 'XMD',
   //   precision: 8,
   // },
-    // {
-    //   exchangeName: 'ProtonDex',
-    //   localSymbol: 'XMT_XMD',
-    //   product: {
-    //     counterProductPrecision: 6,
-    //   },
-    //   baseCurrency: 'XMT',
-    //   counterCurrency: 'XMD',
-    //   precision: 8,
-    // },
-  ];
+  // // {
+  // //   exchangeName: 'ProtonDex',
+  // //   localSymbol: 'XETH_XMD',
+  // //   product: {
+  // //     counterProductPrecision: 6,
+  // //   },
+  // //   baseCurrency: 'XETH',
+  // //   counterCurrency: 'XMD',
+  // //   precision: 8,
+  // // },
+  //   // {
+  //   //   exchangeName: 'ProtonDex',
+  //   //   localSymbol: 'XMT_XMD',
+  //   //   product: {
+  //   //     counterProductPrecision: 6,
+  //   //   },
+  //   //   baseCurrency: 'XMT',
+  //   //   counterCurrency: 'XMD',
+  //   //   precision: 8,
+  //   // },
+  // ];
 
   const protonDex = await initProtonDex(logger);
   await protonDex.startTransactionHeaderRefresh();
@@ -247,8 +247,7 @@ const getAccountBalances = async (ccxtExchanges) => {
     krakenSubscriber,
   );
 
-  const protonDexSubscriber = new ProtonDexSubscriber(protonDexExchangeProducts, logger);
-  await protonDexSubscriber.start();
+  await MetalxSubscriber.start('XBTC_XMD', 'XBTC', 'XMD', 30, logger, 8, 6);
 
   let balancesReady = false;
 
@@ -275,16 +274,16 @@ const getAccountBalances = async (ccxtExchanges) => {
     if (!orderBookService.orderbooksInitialized()) return;
 
     if (productId === 'BTC/USD') {
-      const protonDexBtcOrderbook = protonDexSubscriber.orderBooks.XBTC_XMD;
+      const protonDexBtcOrderbook = MetalxSubscriber.getBook();
       if (!protonDexBtcOrderbook || !protonDexBtcOrderbook.initialized) {
-        // logger.info('protonDexBtcOrderbook not initialized, skipping this kraken update');
+        logger.info('protonDexBtcOrderbook not initialized, skipping this kraken update');
         return;
       }
-      if (!protonDexBtcOrderbook.updatedAt || moment().diff(protonDexBtcOrderbook.updatedAt, 'milliseconds') > 1000) {
-        // const lastUpdatedUtc = moment(protonDexBtcOrderbook.updatedAt).utc().format();
-        // logger.warn(`protonDexBtcOrderbook is stale (last updated: ${lastUpdatedUtc}), skipping`);
-        return;
-      }
+      // if (!protonDexBtcOrderbook.updatedAt || moment().diff(protonDexBtcOrderbook.updatedAt, 'milliseconds') > 1000){
+      //   // const lastUpdatedUtc = moment(protonDexBtcOrderbook.updatedAt).utc().format();
+      //   // logger.warn(`protonDexBtcOrderbook is stale (last updated: ${lastUpdatedUtc}), skipping`);
+      //   return;
+      // }
 
       const opportunityBtc = arbEngine.findOpportunity(krakenOrderbook, protonDexBtcOrderbook);
 
@@ -293,7 +292,9 @@ const getAccountBalances = async (ccxtExchanges) => {
         try {
           const executed = await arbEngine.executeOpportunity(opportunityBtc);
           writeOpportunityToCsv(opportunityBtc, executed);
-          await protonDexSubscriber.refreshOrderbook('XBTC_XMD');
+          // refresh orderbook to get latest state after execution
+          const depth = await MetalxSubscriber.fetchDepth(logger);
+          MetalxSubscriber.resnapshot(depth);
           await refreshBalances();
         } catch (e) {
           logger.error(`e.message: ${e.message}, e.code: ${e.code}, error executing BTC opportunity`);
