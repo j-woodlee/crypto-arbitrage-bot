@@ -278,6 +278,15 @@ async function fetchDepth(logger) {
 // WebSocket – subscribe to order updates
 // ---------------------------------------------------------------------------
 
+const RECONNECT_DELAY_MS = 3000;
+let intentionalClose = false;
+
+const shutdown = (ws) => {
+  intentionalClose = true;
+  ws.close();
+  process.exit(0);
+};
+
 function connectWs(logger) {
   logger.info(`Connecting to ${WS_URL}`);
 
@@ -340,21 +349,26 @@ function connectWs(logger) {
     logger.info(`WebSocket closed: ${code} ${reason.toString()}`);
     if (resnapshotTimer) clearInterval(resnapshotTimer);
     book.empty();
+    if (!intentionalClose) {
+      logger.warn(`MetalX WS dropped, reconnecting in ${RECONNECT_DELAY_MS}ms...`);
+      setTimeout(async () => {
+        try {
+          const depth = await fetchDepth(logger);
+          loadSnapshot(depth);
+        } catch (e) {
+          logger.error(`MetalX re-snapshot on reconnect failed: ${e.message}`);
+        }
+        connectWs(logger);
+      }, RECONNECT_DELAY_MS);
+    }
   });
 
   ws.on('error', (err) => {
     logger.error(`WebSocket error: ${err.message}`);
   });
 
-  const shutdown = () => {
-    logger.info('Shutting down…');
-    if (resnapshotTimer) clearInterval(resnapshotTimer);
-    ws.close();
-    process.exit(0);
-  };
-
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.once('SIGINT', () => shutdown(ws));
+  process.once('SIGTERM', () => shutdown(ws));
 }
 
 // ---------------------------------------------------------------------------

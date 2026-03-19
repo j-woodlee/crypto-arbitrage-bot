@@ -124,9 +124,9 @@ class OrderBook {
   }
 
   empty() {
+    this.initialized = false;
     this.bids.clear();
     this.asks.clear();
-    this.initialized = false;
   }
 
   isLive() {
