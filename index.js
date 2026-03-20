@@ -300,7 +300,7 @@ const getAccountBalances = async (ccxtExchanges) => {
           logger.error(`e.message: ${e.message}, e.code: ${e.code}, error executing BTC opportunity`);
           throw e;
         } finally {
-          // isExecuting = false;
+          isExecuting = false;
         }
       }
     }
