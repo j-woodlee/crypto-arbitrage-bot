@@ -29,6 +29,8 @@ const chainUrlsProd = [
 //   'https://test.proton.eosusa.news',
 // ];
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 const OPPORTUNITY_CSV_PATH = path.join(__dirname, 'executed_opportunities.csv');
 
 const writeOpportunityToCsv = (opportunity, executed) => {
@@ -296,11 +298,13 @@ const getAccountBalances = async (ccxtExchanges) => {
           const depth = await MetalxSubscriber.fetchDepth(logger);
           MetalxSubscriber.resnapshot(depth);
           await refreshBalances();
+          await sleep(1000); // prevent duplicate transactions
+          isExecuting = false;
         } catch (e) {
           logger.error(`e.message: ${e.message}, e.code: ${e.code}, error executing BTC opportunity`);
           throw e;
         } finally {
-          isExecuting = false;
+          // isExecuting = false;
         }
       }
     }
