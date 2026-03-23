@@ -298,7 +298,6 @@ const getAccountBalances = async (ccxtExchanges) => {
           const depth = await MetalxSubscriber.fetchDepth(logger);
           MetalxSubscriber.resnapshot(depth);
           await refreshBalances();
-          await sleep(1000); // prevent duplicate transactions
           isExecuting = false;
         } catch (e) {
           logger.error(`e.message: ${e.message}, e.code: ${e.code}, error executing BTC opportunity`);
