@@ -79,7 +79,7 @@ const initProtonDex = async (logger) => {
 };
 
 const fetchFeeSchedule = async () => ({
-  Kraken: { taker: 0.004 },
+  Kraken: { taker: 0.0035 },
   ProtonDex: { taker: 0 },
 });
 

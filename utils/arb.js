@@ -15,7 +15,7 @@ class ArbitrageEngine {
     this.logger = logger;
     this.krakenSubscriber = krakenSubscriber || null;
     this.feeSchedule = {
-      Kraken: { taker: 0.004 },
+      Kraken: { taker: 0.0035 },
       ProtonDex: { taker: 0 },
     };
   }
@@ -88,13 +88,13 @@ class ArbitrageEngine {
     );
     // console.log('smallestValue: ');
     // console.log(smallestValue);
-    // take 0.4% off just for the worse case taker order, so we dont get insufficient funds error
-    const amount = smallestValue - (smallestValue * 0.004); // smallestValue * 0.996
+    // take 0.35% off just for the worse case taker order, so we dont get insufficient funds error
+    const amount = smallestValue - (smallestValue * 0.0035); // smallestValue * 0.9965
     if (amount < 0.0001) { // minimum kraken btc size is 0.0001
       return 0;
     }
-    if (amount > 0.0005) {
-      return 0.0005;
+    if (amount > 0.0007) {
+      return 0.0007;
     }
     return amount;
   }
