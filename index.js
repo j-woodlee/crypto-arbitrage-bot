@@ -95,90 +95,60 @@ const initKraken = async () => {
   return kraken;
 };
 
-// const getAccountBalances = async (ccxtExchanges) => {
-//   const accountBalances = {};
-//   await Promise.each(ccxtExchanges, async (exchange) => {
-//     const exchangeName = exchange.name;
-//     accountBalances[exchangeName] = {};
-//     const accounts = await exchange.fetchAccounts();
-//     console.log(accounts);
 
-//     const balances = await exchange.fetchBalance();
-//     delete balances.info;
-//     delete balances.free;
-//     delete balances.total;
-//     delete balances.used;
+const BALANCE_FETCH_MAX_RETRIES = 3;
+const BALANCE_FETCH_RETRY_DELAY_MS = 2000;
 
-//     const balancesSymbols = Object.keys(balances);
-//     // eslint-disable-next-line no-restricted-syntax
-//     for (const symbol of balancesSymbols) {
-//       if (['XMD', 'USD', 'ETH', 'XETH', 'XBTC', 'BTC', 'XMT', 'MTL'].includes(symbol)) {
-//         const balance = {};
-//         balance.value = parseFloat(balances[symbol].free);
-//         accountBalances[exchangeName][symbol] = balance;
-//       }
-//     }
-//   });
-//   return accountBalances;
-// };
+const fetchExchangeBalances = async (exchange, retries = BALANCE_FETCH_MAX_RETRIES) => {
+  const exchangeName = exchange.name;
+  const balances = {};
+
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    try {
+      if (exchangeName === 'Kraken') {
+        // eslint-disable-next-line no-await-in-loop
+        const result = await exchange.fetchBalance();
+        for (const [code, bal] of Object.entries(result.free)) {
+          if (bal > 0) {
+            balances[code] = { value: parseFloat(bal) };
+          }
+        }
+      } else {
+        // eslint-disable-next-line no-await-in-loop
+        const accounts = await exchange.fetchAccounts();
+        for (const account of accounts) {
+          if (account.type === 'wallet') {
+            const balance = account.info.available_balance;
+            balance.value = parseFloat(balance.value);
+            balances[account.code] = balance;
+          }
+        }
+      }
+      return balances;
+    } catch (e) {
+      const isLastAttempt = attempt === retries;
+      if (isLastAttempt) throw e;
+      const delay = BALANCE_FETCH_RETRY_DELAY_MS * attempt;
+      console.warn(
+        `[${exchangeName}] Balance fetch failed (attempt ${attempt}/${retries}): ${e.message}. Retrying in ${delay}ms...`,
+      );
+      // eslint-disable-next-line no-await-in-loop
+      await sleep(delay);
+    }
+  }
+  return balances;
+};
 
 const getAccountBalances = async (ccxtExchanges) => {
   const accountBalances = {};
   await Promise.map(ccxtExchanges, async (exchange) => {
     const exchangeName = exchange.name;
-    accountBalances[exchangeName] = {};
-    if (exchangeName === 'Kraken') {
-      const balances = await exchange.fetchBalance();
-      // console.log('balances: ');
-      // console.log(balances);
-      // eslint-disable-next-line no-restricted-syntax
-      for (const [code, bal] of Object.entries(balances.free)) {
-        if (bal > 0) {
-          accountBalances[exchangeName][code] = { value: parseFloat(bal) };
-        }
-      }
-    } else {
-      const accounts = await exchange.fetchAccounts();
-      // eslint-disable-next-line no-restricted-syntax
-      for (const account of accounts) {
-        if (account.type === 'wallet') {
-          const balance = account.info.available_balance;
-          balance.value = parseFloat(balance.value);
-          accountBalances[exchangeName][account.code] = balance;
-        }
-      }
-    }
+    accountBalances[exchangeName] = await fetchExchangeBalances(exchange);
   });
   console.log('accountBalances: ');
   console.log(accountBalances);
   return accountBalances;
 };
-
-// const getAveragePurchasePrice = async (exchange, symbol) => {
-//   const trades = await exchange.fetchMyTrades();
-
-//   const buyTrades = trades.filter((trade) => {
-//     const tradeTime = new Date(trade.info.trade_time);
-//     const afterMayFirst2023 = tradeTime > new Date('2023-05-1');
-//     return trade.info.product_id === symbol && trade.side === 'buy' && afterMayFirst2023;
-//   });
-
-//   let sumBaseProduct = 0;
-//   let sumCounterProduct = 0;
-//   buyTrades.forEach((trade) => {
-//     const { amount, cost } = trade;
-//     if (Number.isNaN(amount) || Number.isNaN(cost)) {
-//       return;
-//     }
-//     console.log('amount: ');
-//     console.log(amount);
-//     sumBaseProduct += amount;
-//     sumCounterProduct += cost;
-//   });
-
-//   const averagePrice = sumCounterProduct / sumBaseProduct;
-//   return averagePrice;
-// };
 
 (async () => {
   const logger = Logger('arb bot', 'debug');
