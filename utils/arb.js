@@ -320,7 +320,7 @@ class ArbitrageEngine {
     const dexExchange = this.ccxtExchanges[dexTrade.exchangeName];
     const dexAmount = toFixedNumber(krakenFilledAmount, opportunity.precision, 10);
     dexTrade.amount = dexAmount;
-    dexTrade.amountCounterCurrency = dexTrade.price * dexAmount;
+    dexTrade.amountCounterCurrency = new BigNumber(dexTrade.price).times(dexAmount).toNumber();
     const dexParams = {
       localSymbol: dexTrade.symbol, // for dex
       quoteCurrencyQty: dexTrade.amountCounterCurrency, // for dex

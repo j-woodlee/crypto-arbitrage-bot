@@ -264,16 +264,15 @@ const getAccountBalances = async (ccxtExchanges) => {
         try {
           const executed = await arbEngine.executeOpportunity(opportunityBtc);
           writeOpportunityToCsv(opportunityBtc, executed);
-        } catch (e) {
-          logger.error(`e.message: ${e.message}, e.code: ${e.code}, error executing BTC opportunity`);
-          throw e;
-        } finally {
           await sleep(3000); // sleep to let balances update before next opportunity
           // Always refresh orderbook and balances so the next opportunity is sized correctly
           const depth = await MetalxSubscriber.fetchDepth(logger);
           MetalxSubscriber.resnapshot(depth);
           await refreshBalances();
           isExecuting = false;
+        } catch (e) {
+          logger.error(`e.message: ${e.message}, e.code: ${e.code}, error executing BTC opportunity`);
+          throw e;
         }
       }
     }
