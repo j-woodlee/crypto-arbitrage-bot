@@ -13,6 +13,7 @@
     "@metalpay/metal-ccxt-lib": "^2.0.3-11",
     "@metalpay/metal-nebula-logger": "^2.0.6",
     "axios": "^1.4.0",
+    "bignumber.js": "^10.0.2",
     "bintrees": "^1.0.2",
     "bluebird": "^3.7.2",
     "ccxt": "^4.5.39",

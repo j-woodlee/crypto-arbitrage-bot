@@ -1,5 +1,6 @@
 /* eslint-disable max-len */
 const Promise = require('bluebird');
+const BigNumber = require('bignumber.js');
 
 const KRAKEN_USD_PRECISION = 4;
 // const DEX_XMD_PRECISION = 6;
