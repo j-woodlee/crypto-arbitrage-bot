@@ -89,8 +89,10 @@ class ArbitrageEngine {
     );
     // console.log('smallestValue: ');
     // console.log(smallestValue);
-    // take 0.35% off just for the worse case taker order, so we dont get insufficient funds error
-    const amount = smallestValue - (smallestValue * 0.0035); // smallestValue * 0.9965
+    // take 0.35% off only when the limiting factor is an exchange balance, to avoid insufficient funds errors
+    const isBalanceLimited = smallestValue === askExchangeCounterCurrencyBalanceInBaseCurrency
+      || smallestValue === bidExchangeBaseCurrencyBalance;
+    const amount = isBalanceLimited ? smallestValue - (smallestValue * 0.0035) : smallestValue;
     if (amount < 0.0001) { // minimum kraken btc size is 0.0001
       return 0;
     }
