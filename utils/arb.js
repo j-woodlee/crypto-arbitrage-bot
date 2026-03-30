@@ -3,7 +3,7 @@ const Promise = require('bluebird');
 const BigNumber = require('bignumber.js');
 
 const KRAKEN_USD_PRECISION = 4;
-// const DEX_XMD_PRECISION = 6;
+const DEX_XMD_PRECISION = 6;
 
 const toFixedNumber = (num, digits, base) => {
   const pow = (base ?? 10) ** digits;
@@ -321,7 +321,15 @@ class ArbitrageEngine {
     const dexExchange = this.ccxtExchanges[dexTrade.exchangeName];
     const dexAmount = toFixedNumber(krakenFilledAmount, opportunity.precision, 10);
     dexTrade.amount = dexAmount;
-    dexTrade.amountCounterCurrency = new BigNumber(dexTrade.price).times(dexAmount).toNumber();
+    const dexXmdBalance = this.accountBalances[dexTrade.exchangeName][dexTrade.counterCurrency].value;
+    const dexAmountCounter = new BigNumber(dexTrade.price).times(dexAmount);
+    // sometimes if we dont round up the dex will give us 0.00000001 btc less than we want, by rounding up we ensure we get the full amount
+    // however, if this order would have zeroed out the dex balance, then we need to round down so we dont get balance errors
+    const dexAmountCounterRoundUp = dexAmountCounter.dp(DEX_XMD_PRECISION, BigNumber.ROUND_UP).toNumber();
+    dexTrade.amountCounterCurrency = dexAmountCounterRoundUp > dexXmdBalance
+      ? dexAmountCounter.dp(DEX_XMD_PRECISION, BigNumber.ROUND_DOWN).toNumber()
+      : dexAmountCounterRoundUp;
+    this.logger.info(`dexAmountCounter: ${dexAmountCounter.toNumber()}, dexAmountCounterRoundUp: ${dexAmountCounterRoundUp}, dexXmdBalance: ${dexXmdBalance}, dexTrade.amountCounterCurrency: ${dexTrade.amountCounterCurrency}`);
     const dexParams = {
       localSymbol: dexTrade.symbol, // for dex
       quoteCurrencyQty: dexTrade.amountCounterCurrency, // for dex

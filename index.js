@@ -264,7 +264,7 @@ const getAccountBalances = async (ccxtExchanges) => {
         try {
           const executed = await arbEngine.executeOpportunity(opportunityBtc);
           writeOpportunityToCsv(opportunityBtc, executed);
-          await sleep(3000); // sleep to let balances update before next opportunity
+          await sleep(4000); // sleep to let balances update before next opportunity
           // Always refresh orderbook and balances so the next opportunity is sized correctly
           const depth = await MetalxSubscriber.fetchDepth(logger);
           MetalxSubscriber.resnapshot(depth);
