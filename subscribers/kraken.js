@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const https = require('https');
 const WebSocket = require('ws');
 const { OrderBook } = require('../utils');
+const { nextKrakenNonce } = require('../utils/krakenNonce');
 
 class KrakenSubscriber {
   constructor(exchangeProducts, logger, onUpdate, krakenApiKey, krakenApiSecret) {
@@ -44,7 +45,7 @@ class KrakenSubscriber {
 
   async fetchWsToken() {
     const apiPath = '/0/private/GetWebSocketsToken';
-    const nonce = Date.now().toString();
+    const nonce = nextKrakenNonce().toString();
     const postData = `nonce=${nonce}`;
     const sha256 = crypto.createHash('sha256').update(nonce + postData).digest();
     const secretBuffer = Buffer.from(this.krakenApiSecret, 'base64');

@@ -8,6 +8,7 @@ const moment = require('moment');
 const Promise = require('bluebird');
 const OrderBookService = require('./orderbookService');
 const secrets = require('./secrets.json');
+const { nextKrakenNonce } = require('./utils/krakenNonce');
 const { ArbitrageEngine } = require('./utils');
 
 const {
@@ -91,6 +92,7 @@ const initKraken = async () => {
     apiKey: secrets.krakenApiKey,
     secret: secrets.krakenApiSecret,
   });
+  kraken.nonce = () => nextKrakenNonce();
   await kraken.loadMarkets();
   return kraken;
 };
